@@ -1,7 +1,7 @@
-"""Chunking module - document splitting adapter layer.
+"""Chunking 模块 - 文档切分适配层。
 
-This module provides the business adapter for text splitting, transforming
-Document objects into Chunk objects with proper metadata and traceability.
+本模块提供文本切分的业务适配器，将 Document 对象转换为带有正确元数据
+和可追溯性的 Chunk 对象。
 """
 
 from src.ingestion.chunking.document_chunker import DocumentChunker

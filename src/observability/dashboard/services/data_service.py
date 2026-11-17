@@ -1,8 +1,7 @@
-"""DataService – read-only facade for browsing ingested data.
+"""DataService – 用于浏览已摄入数据的只读门面。
 
-Wraps ``DocumentManager``, ``ChromaStore``, and ``ImageStorage`` to
-provide the data the Data Browser page needs, without coupling the
-UI to storage internals.
+封装 ``DocumentManager``、``ChromaStore`` 和 ``ImageStorage``，为
+Data Browser 页面提供所需数据，同时避免 UI 与存储内部实现耦合。
 """
 
 from __future__ import annotations
@@ -15,10 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class DataService:
-    """Provide read-only access to ingested documents, chunks, and images.
+    """提供对已摄入文档、chunk 与图片的只读访问。
 
-    Lazily instantiates the heavy storage objects on first call so that
-    importing the module alone has zero cost.
+    重量级存储对象在首次调用时才实例化，因此仅导入该模块
+    不会产生任何开销。
     """
 
     def __init__(self) -> None:
@@ -28,20 +27,19 @@ class DataService:
         self._current_collection: str = ""
 
     # ------------------------------------------------------------------
-    # Lazy initialisation
+    # 懒初始化
     # ------------------------------------------------------------------
 
     def _ensure_stores(self, collection: Optional[str] = None) -> None:
-        """Create storage objects on first use.
+        """在首次使用时创建存储对象。
 
-        Args:
-            collection: Optional collection name. The ChromaStore will be
-                        re-created if the requested collection differs from
-                        the currently loaded one.
+        参数:
+            collection: 可选的 collection 名称。若请求的 collection 与
+                        当前已加载的不一致，将重新创建 ChromaStore。
         """
         target_collection = collection or "default"
 
-        # Re-create chroma if collection changed
+        # collection 变化时重新创建 chroma
         if (
             self._manager is not None
             and self._current_collection == target_collection
@@ -75,11 +73,11 @@ class DataService:
         self._current_collection = target_collection
 
     # ------------------------------------------------------------------
-    # Public API
+    # 公共 API
     # ------------------------------------------------------------------
 
     def list_collections(self) -> List[str]:
-        """Return all available ChromaDB collection names."""
+        """返回所有可用的 ChromaDB collection 名称。"""
         try:
             from src.core.settings import load_settings, resolve_path
             import chromadb
@@ -101,10 +99,10 @@ class DataService:
     def list_documents(
         self, collection: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Return ingested documents as plain dicts (UI-friendly).
+        """以普通 dict 返回已摄入的文档（便于 UI 使用）。
 
-        Each dict has keys: source_path, source_hash, collection,
-        chunk_count, image_count, processed_at.
+        每个 dict 包含以下键：source_path、source_hash、collection、
+        chunk_count、image_count、processed_at。
         """
         self._ensure_stores(collection)
         from dataclasses import asdict
@@ -115,7 +113,7 @@ class DataService:
     def get_document_detail(
         self, doc_id: str, collection: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
-        """Return document detail as a plain dict, or None."""
+        """以普通 dict 返回文档详情，未找到则返回 None。"""
         self._ensure_stores(collection)
         from dataclasses import asdict
 
@@ -127,9 +125,9 @@ class DataService:
     def get_chunks(
         self, source_hash: str, collection: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Return chunk records from ChromaDB matching *source_hash*.
+        """返回 ChromaDB 中匹配 *source_hash* 的 chunk 记录。
 
-        Each dict has keys: id, text, metadata.
+        每个 dict 包含以下键：id、text、metadata。
         """
         self._ensure_stores(collection)
         try:
@@ -157,7 +155,7 @@ class DataService:
     def get_images(
         self, source_hash: str, collection: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Return image records for a document."""
+        """返回某个文档的图片记录。"""
         self._ensure_stores(collection)
         try:
             return self._images.list_images(doc_hash=source_hash)
@@ -171,9 +169,9 @@ class DataService:
         collection: Optional[str] = None,
         source_hash: Optional[str] = None,
     ) -> Any:
-        """Delete a document via the underlying DocumentManager.
+        """通过底层 DocumentManager 删除文档。
 
-        Returns a ``DeleteResult`` dataclass.
+        返回 ``DeleteResult`` dataclass。
         """
         self._ensure_stores(collection)
         return self._manager.delete_document(
@@ -185,7 +183,7 @@ class DataService:
     def get_collection_stats(
         self, collection: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Return aggregate stats as a plain dict."""
+        """以普通 dict 返回聚合统计信息。"""
         self._ensure_stores(collection)
         from dataclasses import asdict
 
@@ -193,9 +191,9 @@ class DataService:
         return asdict(stats)
 
     def reset_all(self) -> Dict[str, Any]:
-        """Delete ALL data: ChromaDB collections, BM25 indexes, images, integrity DB, and trace logs.
+        """删除所有数据：ChromaDB collection、BM25 索引、图片、完整性 DB 及 trace 日志。
 
-        Returns a summary dict with counts of what was deleted.
+        返回包含各项删除数量的汇总 dict。
         """
         import shutil
         from src.core.settings import load_settings, resolve_path
@@ -213,7 +211,7 @@ class DataService:
 
         settings = load_settings()
 
-        # 1. Delete all ChromaDB collections
+        # 1. 删除所有 ChromaDB collection
         try:
             persist_dir = str(resolve_path(settings.vector_store.persist_directory))
             client = chromadb.PersistentClient(
@@ -227,7 +225,7 @@ class DataService:
         except Exception as exc:
             summary["errors"].append(f"ChromaDB: {exc}")
 
-        # 2. Clear BM25 indexes (remove entire bm25 directory)
+        # 2. 清空 BM25 索引（删除整个 bm25 目录）
         try:
             bm25_dir = resolve_path("data/db/bm25")
             if bm25_dir.exists():
@@ -237,7 +235,7 @@ class DataService:
         except Exception as exc:
             summary["errors"].append(f"BM25: {exc}")
 
-        # 3. Clear image storage (SQLite DB + image files)
+        # 3. 清空图片存储（SQLite DB + 图片文件）
         try:
             img_db = resolve_path("data/db/image_index.db")
             if img_db.exists():
@@ -250,7 +248,7 @@ class DataService:
         except Exception as exc:
             summary["errors"].append(f"Images: {exc}")
 
-        # 4. Clear file integrity database
+        # 4. 清空文件完整性数据库
         try:
             integrity_db = resolve_path("data/db/ingestion_history.db")
             if integrity_db.exists():
@@ -259,7 +257,7 @@ class DataService:
         except Exception as exc:
             summary["errors"].append(f"Integrity: {exc}")
 
-        # 5. Clear trace logs
+        # 5. 清空 trace 日志
         try:
             traces_file = resolve_path("logs/traces.jsonl")
             if traces_file.exists():
@@ -268,7 +266,7 @@ class DataService:
         except Exception as exc:
             summary["errors"].append(f"Traces: {exc}")
 
-        # Reset internal state so next call re-initializes
+        # 重置内部状态，以便下次调用时重新初始化
         self._manager = None
         self._chroma = None
         self._images = None

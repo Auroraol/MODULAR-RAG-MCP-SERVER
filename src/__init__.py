@@ -1,7 +1,7 @@
 """
-Source Package Root.
+源码包根目录。
 
-This is the root package for all source code modules.
+这里汇集了所有源码子模块。
 """
 
 __all__ = ["mcp_server", "core", "ingestion", "libs", "observability"]

@@ -1,14 +1,14 @@
-"""Integration tests for DenseEncoder with real Azure Embedding.
+"""DenseEncoder 接入真实 Azure Embedding 的集成测试。
 
-This test suite validates that DenseEncoder correctly integrates with
-the Azure Embedding provider using real API calls. These tests verify:
-- Real embedding API connectivity
-- Correct vector dimensions
-- Batch processing with real provider
-- Error handling in production-like scenarios
+本测试套件通过真实 API 调用验证 DenseEncoder 与 Azure Embedding provider
+的正确集成。这些测试验证:
+- 真实 Embedding API 连通性
+- 正确的向量维度
+- 使用真实 provider 的批处理
+- 类生产场景下的错误处理
 
-⚠️ WARNING: These tests make REAL API calls and incur costs.
-Run only when validating Azure Embedding configuration.
+⚠️ 警告: 这些测试会发起真实 API 调用并产生费用。
+仅在验证 Azure Embedding 配置时运行。
 """
 
 import pytest
@@ -20,23 +20,23 @@ from src.libs.embedding.embedding_factory import EmbeddingFactory
 
 @pytest.fixture(scope="module")
 def settings():
-    """Load settings from config file."""
+    """从配置文件加载配置。"""
     return load_settings("config/settings.yaml")
 
 
 @pytest.fixture(scope="module")
 def azure_embedding(settings):
-    """Create Azure Embedding instance from settings.
-    
-    This fixture verifies that:
-    1. Settings contain valid Azure Embedding configuration
-    2. EmbeddingFactory can create Azure provider from settings.yaml
-    3. The provider is ready for use
-    
-    All configuration (endpoint, api_key, model) comes from settings.yaml.
-    No hardcoded values or environment variable overrides.
+    """根据配置创建 Azure Embedding 实例。
+
+    该 fixture 验证:
+    1. 配置包含有效的 Azure Embedding 配置
+    2. EmbeddingFactory 能从 settings.yaml 创建 Azure provider
+    3. 该 provider 已就绪可用
+
+    所有配置（endpoint、api_key、model）均来自 settings.yaml。
+    不使用硬编码值或环境变量覆盖。
     """
-    # Validate Azure configuration is present
+    # 校验 Azure 配置存在
     assert settings.embedding.provider == "azure", \
         "Integration test requires Azure embedding provider in settings"
     
@@ -46,7 +46,7 @@ def azure_embedding(settings):
     assert settings.embedding.api_key, \
         "Azure API key must be configured in settings.yaml"
     
-    # Create embedding provider via factory (reads all config from settings)
+    # 通过工厂创建 embedding provider（从配置读取全部配置）
     embedding = EmbeddingFactory.create(settings)
     
     return embedding
@@ -54,21 +54,21 @@ def azure_embedding(settings):
 
 @pytest.fixture
 def encoder(azure_embedding):
-    """Create DenseEncoder with Azure Embedding provider."""
+    """创建使用 Azure Embedding provider 的 DenseEncoder。"""
     return DenseEncoder(azure_embedding, batch_size=10)
 
 
 # ============================================================================
-# Real API Call Tests
+# 真实 API 调用测试
 # ============================================================================
 
 def test_encode_single_chunk_with_azure(encoder):
-    """Test encoding a single chunk with real Azure Embedding API.
-    
-    This test verifies:
-    - API connectivity
-    - Correct response format
-    - Expected vector dimensions (1536 for text-embedding-ada-002)
+    """测试使用真实 Azure Embedding API 编码单个 chunk。
+
+    该测试验证:
+    - API 连通性
+    - 正确的响应格式
+    - 预期的向量维度（text-embedding-ada-002 为 1536）
     """
     chunks = [
         Chunk(
@@ -80,27 +80,27 @@ def test_encode_single_chunk_with_azure(encoder):
     
     vectors = encoder.encode(chunks)
     
-    # Verify output structure
+    # 验证输出结构
     assert len(vectors) == 1, "Should return exactly 1 vector"
     assert len(vectors[0]) == 1536, \
         "text-embedding-ada-002 should return 1536-dimensional vectors"
-    
-    # Verify all values are floats
+
+    # 验证所有值均为 float
     assert all(isinstance(v, float) for v in vectors[0]), \
         "All vector components should be floats"
-    
-    # Verify non-zero vector (sanity check)
+
+    # 验证向量非零（合理性检查）
     assert any(v != 0.0 for v in vectors[0]), \
         "Vector should contain non-zero values"
 
 
 def test_encode_multiple_chunks_with_azure(encoder):
-    """Test encoding multiple chunks in single batch.
-    
-    This test verifies:
-    - Batch processing works with real API
-    - All chunks are processed
-    - Vectors are semantically distinct
+    """测试在单个批次中编码多个 chunk。
+
+    该测试验证:
+    - 批处理能与真实 API 配合工作
+    - 所有 chunk 均被处理
+    - 向量在语义上可区分
     """
     chunks = [
         Chunk(id="1", text="Artificial intelligence is transforming technology.", metadata={'source_path': 'integration_test'}),
@@ -110,27 +110,27 @@ def test_encode_multiple_chunks_with_azure(encoder):
     
     vectors = encoder.encode(chunks)
     
-    # Verify correct number of vectors
+    # 验证向量数量正确
     assert len(vectors) == 3, "Should return 3 vectors for 3 chunks"
-    
-    # Verify all vectors have correct dimension
+
+    # 验证所有向量维度正确
     assert all(len(v) == 1536 for v in vectors), \
         "All vectors should have 1536 dimensions"
-    
-    # Verify vectors are distinct (semantic difference)
-    # Chunks 1 and 2 are related (AI/ML), chunk 3 is different (Python)
-    # We don't assert exact similarity values, just that vectors differ
+
+    # 验证向量彼此不同（语义差异）
+    # Chunk 1 和 2 相关（AI/ML），chunk 3 不同（Python）
+    # 这里不校验精确的相似度值，只要求向量不同
     assert vectors[0] != vectors[1] != vectors[2], \
         "Vectors should be distinct for different texts"
 
 
 def test_encode_with_batching(azure_embedding):
-    """Test encoding with multiple batches using real API.
-    
-    This test verifies:
-    - Multi-batch processing works correctly
-    - Batch boundaries don't cause issues
-    - All chunks are processed across batches
+    """测试使用真实 API 进行多批次编码。
+
+    该测试验证:
+    - 多批次处理正常工作
+    - 批次边界不会引发问题
+    - 所有 chunk 跨批次均被处理
     """
     encoder = DenseEncoder(azure_embedding, batch_size=2)
     
@@ -141,23 +141,23 @@ def test_encode_with_batching(azure_embedding):
     
     vectors = encoder.encode(chunks)
     
-    # Should process in 3 batches: [0:2], [2:4], [4:5]
+    # 应分 3 个批次处理：[0:2]、[2:4]、[4:5]
     assert len(vectors) == 5, "All 5 chunks should be processed"
     assert all(len(v) == 1536 for v in vectors), "All vectors should have correct dimension"
-    
-    # Verify batch processing didn't corrupt ordering
-    # (We can't verify exact order without knowing vector content,
-    #  but we can verify count and dimensions)
+
+    # 验证批处理未打乱顺序
+    # （在不知道向量内容的情况下无法验证精确顺序，
+    #  但可以验证数量与维度）
     assert encoder.get_batch_count(5) == 3, "Should calculate 3 batches"
 
 
 def test_encode_realistic_text_lengths(encoder):
-    """Test encoding chunks of varying realistic lengths.
-    
-    This test verifies:
-    - Short chunks (titles/headers)
-    - Medium chunks (paragraphs)
-    - Long chunks (full sections)
+    """测试编码不同真实长度的 chunk。
+
+    该测试验证:
+    - 短 chunk（标题/表头）
+    - 中等 chunk（段落）
+    - 长 chunk（完整章节）
     """
     chunks = [
         Chunk(
@@ -195,13 +195,13 @@ def test_encode_realistic_text_lengths(encoder):
 
 
 def test_encode_special_characters(encoder):
-    """Test encoding text with special characters and formatting.
-    
-    This test verifies:
-    - Unicode handling
-    - Special characters
-    - Code snippets
-    - Mathematical symbols
+    """测试编码包含特殊字符和格式的文本。
+
+    该测试验证:
+    - Unicode 处理
+    - 特殊字符
+    - 代码片段
+    - 数学符号
     """
     chunks = [
         Chunk(
@@ -228,17 +228,17 @@ def test_encode_special_characters(encoder):
 
 
 # ============================================================================
-# Configuration Validation Tests
+# 配置校验测试
 # ============================================================================
 
 def test_azure_configuration_is_valid(settings):
-    """Verify that Azure Embedding configuration in settings.yaml is correct.
-    
-    This test validates:
-    - Provider is set to 'azure'
-    - Model name is specified
-    - Dimensions match model (1536 for ada-002)
-    - Credentials can be provided via env vars
+    """校验 settings.yaml 中的 Azure Embedding 配置是否正确。
+
+    该测试校验:
+    - provider 设置为 'azure'
+    - 指定了模型名称
+    - 维度与模型匹配（ada-002 为 1536）
+    - 可通过环境变量提供凭据
     """
     assert settings.embedding.provider == "azure", \
         "Provider should be 'azure' for integration tests"
@@ -251,22 +251,22 @@ def test_azure_configuration_is_valid(settings):
 
 
 def test_factory_creates_azure_embedding(settings):
-    """Verify that EmbeddingFactory correctly creates Azure provider."""
+    """校验 EmbeddingFactory 能正确创建 Azure provider。"""
     embedding = EmbeddingFactory.create(settings)
-    
-    # Verify it's the correct type (AzureEmbedding)
+
+    # 验证类型正确（AzureEmbedding）
     assert embedding.__class__.__name__ == "AzureEmbedding", \
         "Factory should create AzureEmbedding instance"
 
 
 # ============================================================================
-# Error Handling Tests (Graceful Degradation)
+# 错误处理测试（优雅降级）
 # ============================================================================
 
 def test_encode_handles_empty_text_gracefully(encoder):
-    """Test that empty/invalid chunks are caught before API call.
-    
-    This prevents wasting API quota on invalid requests.
+    """测试空/非法 chunk 在调用 API 前被拦截。
+
+    以避免在非法请求上浪费 API 配额。
     """
     chunks = [
         Chunk(id="empty", text="", metadata={'source_path': 'integration_test'})
@@ -277,26 +277,26 @@ def test_encode_handles_empty_text_gracefully(encoder):
 
 
 def test_encode_validates_before_api_call(encoder):
-    """Test that validation happens before making expensive API calls."""
+    """测试校验在执行昂贵的 API 调用之前进行。"""
     chunks = [
         Chunk(id="valid", text="Valid chunk", metadata={'source_path': 'integration_test'}),
-        Chunk(id="invalid", text="   \n  ", metadata={'source_path': 'integration_test'}),  # Whitespace only
+        Chunk(id="invalid", text="   \n  ", metadata={'source_path': 'integration_test'}),  # 仅空白字符
     ]
-    
-    # Should fail validation before any API call is made
+
+    # 应在发起任何 API 调用之前校验失败
     with pytest.raises(ValueError, match="whitespace-only"):
         encoder.encode(chunks)
 
 
 # ============================================================================
-# Performance and Quality Observations
+# 性能与质量观察
 # ============================================================================
 
 def test_encode_performance_observation(encoder):
-    """Observe encoding performance with real API.
-    
-    This test doesn't assert performance, but logs timing information
-    for manual observation and optimization opportunities.
+    """观察真实 API 的编码性能。
+
+    该测试不做性能断言，只记录耗时信息，
+    供人工观察与优化参考。
     """
     import time
     
@@ -311,15 +311,14 @@ def test_encode_performance_observation(encoder):
     
     assert len(vectors) == 10
     
-    # Log for observation (not assertion)
+    # 记录用于观察（非断言）
     print(f"\n⏱️  Encoded 10 chunks in {elapsed:.2f}s ({elapsed/10:.2f}s per chunk)")
 
 
 def test_semantic_similarity_observation(encoder):
-    """Observe semantic similarity of related vs unrelated chunks.
-    
-    This test computes cosine similarity to validate that the embeddings
-    capture semantic relationships correctly.
+    """观察相关与不相关 chunk 的语义相似度。
+
+    该测试计算余弦相似度，以校验 Embedding 是否正确捕捉语义关系。
     """
     import math
     
@@ -331,23 +330,23 @@ def test_semantic_similarity_observation(encoder):
     
     vectors = encoder.encode(chunks)
     
-    # Helper function to compute cosine similarity
+    # 计算余弦相似度的辅助函数
     def cosine_similarity(v1, v2):
         dot_product = sum(a * b for a, b in zip(v1, v2))
         magnitude1 = math.sqrt(sum(a * a for a in v1))
         magnitude2 = math.sqrt(sum(b * b for b in v2))
         return dot_product / (magnitude1 * magnitude2)
     
-    # Compute similarities
-    sim_dogs_cats = cosine_similarity(vectors[0], vectors[1])  # Different: dogs vs cats
-    sim_dogs_canines = cosine_similarity(vectors[0], vectors[2])  # Similar: dogs vs canines
-    
-    # Log observations
+    # 计算相似度
+    sim_dogs_cats = cosine_similarity(vectors[0], vectors[1])  # 不同：dogs vs cats
+    sim_dogs_canines = cosine_similarity(vectors[0], vectors[2])  # 相似：dogs vs canines
+
+    # 记录观察结果
     print(f"\n📊 Semantic Similarity:")
     print(f"   Dogs vs Cats: {sim_dogs_cats:.4f}")
     print(f"   Dogs vs Canines: {sim_dogs_canines:.4f}")
     
-    # Expectation: Dogs should be more similar to Canines than to Cats
-    # (This is a weak assertion - real thresholds depend on the model)
+    # 预期：Dogs 与 Canines 的相似度应高于与 Cats 的相似度
+    # （这是一个较弱的断言 —— 真实阈值取决于模型）
     assert sim_dogs_canines > sim_dogs_cats, \
         "Semantically related chunks should have higher similarity"

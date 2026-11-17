@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Spec Sync — splits DEV_SPEC.md into chapter files under auto-coder/references/.
+Spec Sync — 将 DEV_SPEC.md 拆分为 auto-coder/references/ 下的章节文件。
 
-Usage:
+用法:
     python scripts/sync_spec.py [--force]
 """
 
@@ -22,7 +22,7 @@ class Chapter(NamedTuple):
     line_count: int
 
 
-# Chapter number -> English slug (encoding-independent)
+# 章节编号 -> 英文 slug（与编码无关）
 NUMBER_SLUG_MAP = {
     1: "overview",
     2: "features",
@@ -37,7 +37,7 @@ NUMBER_SLUG_MAP = {
 def _slug(chapter_num: int, title: str) -> str:
     if chapter_num in NUMBER_SLUG_MAP:
         return NUMBER_SLUG_MAP[chapter_num]
-    # Fallback: sanitize whatever title text we have
+    # 兜底：清洗现有的标题文本
     clean = re.sub(r'[^\w]+', '-', title, flags=re.ASCII).strip('-').lower()
     return clean or f"chapter-{chapter_num}"
 
@@ -68,7 +68,7 @@ def sync(force: bool = False):
     if not dev_spec.exists():
         print(f"ERROR: {dev_spec} not found"); sys.exit(1)
 
-    # Hash check
+    # 哈希校验
     current_hash = hashlib.sha256(dev_spec.read_bytes()).hexdigest()
     if not force and hash_file.exists() and hash_file.read_text().strip() == current_hash:
         print("specs up-to-date"); return
@@ -79,13 +79,13 @@ def sync(force: bool = False):
 
     specs_dir.mkdir(parents=True, exist_ok=True)
 
-    # Clean orphans
+    # 清理孤立文件
     old = {f.name for f in specs_dir.glob("*.md")}
     new = {ch.filename for ch in chapters}
     for f in old - new:
         (specs_dir / f).unlink()
 
-    # Write chapters
+    # 写入章节文件
     for ch in chapters:
         (specs_dir / ch.filename).write_text('\n'.join(lines[ch.start_line:ch.end_line]), encoding='utf-8')
 

@@ -1,15 +1,15 @@
-# Sample Documents for Testing
+# 用于测试的示例文档
 
-This directory contains sample documents used for testing the RAG pipeline.
+本目录包含用于测试 RAG Pipeline 的示例文档。
 
-## Contents
+## 内容
 
-- `sample.txt` - A minimal text document for basic testing
+- `sample.txt` - 用于基础测试的最小文本文件
 
-## Usage
+## 用法
 
-These documents are used by integration and e2e tests to verify:
-- Document loading
-- Text splitting
-- Embedding generation
-- Vector storage operations
+集成测试与 e2e 测试使用这些文档来验证：
+- 文档加载
+- 文本切分
+- Embedding 生成
+- Vector Store 操作

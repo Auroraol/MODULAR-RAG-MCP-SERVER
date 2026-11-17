@@ -1,10 +1,10 @@
 """
-Observability Layer - Logging, tracing, and evaluation.
+可观测性层 - 日志、Tracing 与评估。
 
-This package contains observability components:
-- Structured logger
+本包包含以下可观测性组件：
+- 结构化 logger
 - Dashboard
-- Evaluation runner
+- 评估运行器
 """
 
 __all__ = []

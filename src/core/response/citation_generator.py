@@ -1,8 +1,8 @@
-"""Citation Generator for generating structured reference information.
+"""用于生成结构化引用信息的 Citation Generator。
 
-This module generates citation information from retrieval results,
-enabling MCP tools to return properly formatted references that
-can be used by AI assistants for source attribution.
+本模块从检索结果中生成引用信息，
+使 MCP 工具能够返回格式规范的引用，
+供 AI 助手进行来源标注。
 """
 
 from __future__ import annotations
@@ -15,16 +15,16 @@ from src.core.types import RetrievalResult
 
 @dataclass
 class Citation:
-    """Represents a single citation/reference.
-    
-    Attributes:
-        index: Citation index number (1-based, for display as [1], [2], etc.)
-        chunk_id: Unique identifier for the source chunk
-        source: Source file path or document name
-        page: Page number in source document (if applicable)
-        score: Relevance score from retrieval
-        text_snippet: Short excerpt from the referenced content
-        metadata: Additional metadata (title, section, etc.)
+    """表示单条引用/参考信息。
+
+    属性:
+        index: 引用序号（从 1 开始，用于显示为 [1]、[2] 等）
+        chunk_id: 来源 Chunk 的唯一标识
+        source: 来源文件路径或文档名称
+        page: 来源文档中的页码（如适用）
+        score: 检索得到的相关性分数
+        text_snippet: 被引用内容的简短摘录
+        metadata: 附加元数据（标题、章节等）
     """
     index: int
     chunk_id: str
@@ -33,9 +33,9 @@ class Citation:
     text_snippet: str
     page: Optional[int] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
+        """转换为字典以便 JSON 序列化。"""
         result = {
             "index": self.index,
             "chunk_id": self.chunk_id,
@@ -51,85 +51,85 @@ class Citation:
 
 
 class CitationGenerator:
-    """Generates citation information from retrieval results.
-    
-    This class transforms RetrievalResult objects into Citation objects
-    with proper indexing and metadata extraction.
-    
-    Example:
+    """从检索结果生成引用信息。
+
+    本类将 RetrievalResult 对象转换为带有正确编号
+    与元数据提取的 Citation 对象。
+
+    示例:
         >>> generator = CitationGenerator()
         >>> results = [RetrievalResult(chunk_id="doc1_001", score=0.95, ...)]
         >>> citations = generator.generate(results)
         >>> print(citations[0].index)  # 1
         >>> print(citations[0].source)  # "docs/guide.pdf"
     """
-    
+
     def __init__(
         self,
         snippet_max_length: int = 200,
         include_metadata_fields: Optional[List[str]] = None,
     ) -> None:
-        """Initialize CitationGenerator.
-        
-        Args:
-            snippet_max_length: Maximum characters for text_snippet (default: 200)
-            include_metadata_fields: Optional list of metadata fields to include.
-                If None, includes 'title', 'section', 'chunk_index'.
+        """初始化 CitationGenerator。
+
+        参数:
+            snippet_max_length: text_snippet 的最大字符数（默认：200）
+            include_metadata_fields: 可选，要包含的元数据字段列表。
+                为 None 时包含 'title'、'section'、'chunk_index'。
         """
         self.snippet_max_length = snippet_max_length
         self.include_metadata_fields = include_metadata_fields or [
             "title", "section", "chunk_index", "doc_type"
         ]
-    
+
     def generate(self, results: List[RetrievalResult]) -> List[Citation]:
-        """Generate citations from retrieval results.
-        
-        Args:
-            results: List of RetrievalResult objects from search.
-            
-        Returns:
-            List of Citation objects with 1-based indexing.
+        """从检索结果生成引用。
+
+        参数:
+            results: 来自检索的 RetrievalResult 对象列表。
+
+        返回:
+            使用从 1 开始编号的 Citation 对象列表。
         """
         citations = []
-        
+
         for idx, result in enumerate(results, start=1):
             citation = self._create_citation(idx, result)
             citations.append(citation)
-        
+
         return citations
-    
+
     def _create_citation(self, index: int, result: RetrievalResult) -> Citation:
-        """Create a Citation from a single RetrievalResult.
-        
-        Args:
-            index: 1-based citation index.
-            result: RetrievalResult to convert.
-            
-        Returns:
-            Citation object with extracted information.
+        """从单个 RetrievalResult 创建 Citation。
+
+        参数:
+            index: 从 1 开始的引用序号。
+            result: 待转换的 RetrievalResult。
+
+        返回:
+            包含所提取信息的 Citation 对象。
         """
         metadata = result.metadata or {}
-        
-        # Extract source path
+
+        # 提取来源路径
         source = metadata.get("source_path", "unknown")
-        
-        # Extract page number (may be int or string)
+
+        # 提取页码（可能为 int 或字符串）
         page = metadata.get("page") or metadata.get("page_num")
         if page is not None:
             try:
                 page = int(page)
             except (ValueError, TypeError):
                 page = None
-        
-        # Generate text snippet
+
+        # 生成文本摘录
         text_snippet = self._generate_snippet(result.text)
-        
-        # Extract selected metadata fields
+
+        # 提取选定的元数据字段
         extra_metadata = {}
         for field_name in self.include_metadata_fields:
             if field_name in metadata and field_name not in ("source_path", "page", "page_num"):
                 extra_metadata[field_name] = metadata[field_name]
-        
+
         return Citation(
             index=index,
             chunk_id=result.chunk_id,
@@ -139,36 +139,36 @@ class CitationGenerator:
             page=page,
             metadata=extra_metadata,
         )
-    
+
     def _generate_snippet(self, text: str) -> str:
-        """Generate a truncated snippet from text.
-        
-        Args:
-            text: Full text content.
-            
-        Returns:
-            Truncated text with ellipsis if needed.
+        """从文本生成截断的摘录。
+
+        参数:
+            text: 完整文本内容。
+
+        返回:
+            截断后的文本，必要时附加省略号。
         """
         if not text:
             return ""
-        
-        # Clean up whitespace
+
+        # 清理空白字符
         cleaned = " ".join(text.split())
-        
+
         if len(cleaned) <= self.snippet_max_length:
             return cleaned
-        
-        # Truncate and add ellipsis
+
+        # 截断并附加省略号
         truncated = cleaned[:self.snippet_max_length].rsplit(" ", 1)[0]
         return truncated + "..."
-    
+
     def format_citation_marker(self, index: int) -> str:
-        """Format a citation marker for inline use.
-        
-        Args:
-            index: 1-based citation index.
-            
-        Returns:
-            Formatted marker like "[1]".
+        """格式化用于行内引用的标记。
+
+        参数:
+            index: 从 1 开始的引用序号。
+
+        返回:
+            形如 "[1]" 的格式化标记。
         """
         return f"[{index}]"

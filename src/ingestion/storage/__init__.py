@@ -1,10 +1,10 @@
 """
-Storage Module.
+存储模块。
 
-This package contains storage components:
-- Vector upserter
-- BM25 indexer
-- Image storage
+该包含以下存储组件：
+- Vector 写入器
+- BM25 索引器
+- 图像存储
 """
 
 from src.ingestion.storage.bm25_indexer import BM25Indexer

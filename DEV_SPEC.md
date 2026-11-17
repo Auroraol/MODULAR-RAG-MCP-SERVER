@@ -1,5 +1,5 @@
-<!-- Dev specification skeleton for the project. Fill sections with details later. -->
-# Developer Specification (DEV_SPEC)
+<!-- 本项目的开发规范骨架，后续补充各章节细节。 -->
+# 开发规范（DEV_SPEC）
 
 > 版本：0.1 — 文档结构草案
 
@@ -2044,11 +2044,11 @@ dashboard:
 
 | 任务编号 | 任务名称 | 状态 | 完成日期 | 备注 |
 |---------|---------|------|---------|------|
-| H1 | RagasEvaluator 实现 | [x] | 2026-02-09 | 19/19 tests passed |
-| H2 | CompositeEvaluator 实现 | [x] | 2026-02-09 | 11/11 tests passed |
-| H3 | EvalRunner + Golden Test Set | [x] | 2026-02-09 | 15/15 tests passed |
-| H4 | 评估面板页面 | [x] | 2026-02-09 | 6/6 tests passed, dashboard page with history tracking |
-| H5 | Recall 回归测试（E2E） | [x] | 2026-02-09 | 3 unit+4 e2e(skip without data), hit@k+MRR threshold gating |
+| H1 | RagasEvaluator 实现 | [x] | 2026-02-09 | 19/19 测试通过 |
+| H2 | CompositeEvaluator 实现 | [x] | 2026-02-09 | 11/11 测试通过 |
+| H3 | EvalRunner + Golden Test Set | [x] | 2026-02-09 | 15/15 测试通过 |
+| H4 | 评估面板页面 | [x] | 2026-02-09 | 6/6 测试通过，Dashboard 页面支持历史记录 |
+| H5 | Recall 回归测试（E2E） | [x] | 2026-02-09 | 3 个单元测试 + 4 个 e2e（无数据时跳过），以 hit@k + MRR 阈值作为门禁 |
 
 #### 阶段 I：端到端验收与文档收口
 

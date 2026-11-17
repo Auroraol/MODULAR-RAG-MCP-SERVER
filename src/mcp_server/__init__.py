@@ -1,8 +1,8 @@
 """
-MCP Server Layer - Interface layer for MCP protocol.
+MCP Server 层 - MCP 协议的接口层。
 
-This package contains the MCP Server implementation that exposes
-tools via JSON-RPC 2.0 over Stdio Transport.
+该包包含 MCP Server 实现，通过 Stdio Transport 上的 JSON-RPC 2.0
+对外暴露工具。
 """
 
 __all__ = []

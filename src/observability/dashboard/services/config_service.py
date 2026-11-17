@@ -1,7 +1,7 @@
-"""Dashboard configuration reading service.
+"""Dashboard 配置读取服务。
 
-Wraps :class:`Settings` to provide formatted component information
-for the Overview page.
+封装 :class:`Settings`，为 Overview 页面提供格式化后的
+组件信息。
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from src.core.settings import Settings, load_settings
 
 @dataclass
 class ComponentInfo:
-    """Summary of a single configured component."""
+    """单个已配置组件的摘要。"""
 
     name: str
     provider: str
@@ -24,17 +24,17 @@ class ComponentInfo:
 
 
 class ConfigService:
-    """Read-only service that exposes application configuration.
+    """暴露应用配置的只读服务。
 
-    Args:
-        settings_path: Path to ``settings.yaml``.
+    参数:
+        settings_path: ``settings.yaml`` 的路径。
     """
 
     def __init__(self, settings_path: Optional[str] = None) -> None:
         self._settings_path = settings_path
         self._settings: Optional[Settings] = None
 
-    # ── lazy load ────────────────────────────────────────────────────
+    # ── 懒加载 ──────────────────────────────────────────────────────
 
     def _load(self) -> Settings:
         if self._settings is None:
@@ -42,17 +42,17 @@ class ConfigService:
         return self._settings
 
     def reload(self) -> None:
-        """Force reload of settings from disk."""
+        """强制从磁盘重新加载配置。"""
         self._settings = None
 
     @property
     def settings(self) -> Settings:
         return self._load()
 
-    # ── component cards ──────────────────────────────────────────────
+    # ── 组件卡片 ────────────────────────────────────────────────────
 
     def get_component_cards(self) -> List[ComponentInfo]:
-        """Return a list of component summaries for the Overview page."""
+        """返回供 Overview 页面使用的组件摘要列表。"""
         s = self._load()
         cards: List[ComponentInfo] = []
 
@@ -80,7 +80,7 @@ class ConfigService:
             extra={"persist_directory": s.vector_store.persist_directory},
         ))
 
-        # Retrieval
+        # 检索
         cards.append(ComponentInfo(
             name="Retrieval",
             provider="hybrid",
@@ -100,7 +100,7 @@ class ConfigService:
             extra={"enabled": s.rerank.enabled, "top_k": s.rerank.top_k},
         ))
 
-        # Vision LLM
+        # 视觉 LLM
         if s.vision_llm and s.vision_llm.enabled:
             cards.append(ComponentInfo(
                 name="Vision LLM",
@@ -109,7 +109,7 @@ class ConfigService:
                 extra={"max_image_size": s.vision_llm.max_image_size},
             ))
 
-        # Ingestion
+        # 摄入
         if s.ingestion:
             cards.append(ComponentInfo(
                 name="Ingestion",

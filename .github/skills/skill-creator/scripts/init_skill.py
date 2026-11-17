@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Skill Initializer - Creates a new skill from template
+Skill Initializer - 从模板创建新 skill
 
-Usage:
+用法:
     init_skill.py <skill-name> --path <path>
 
-Examples:
+示例:
     init_skill.py my-new-skill --path .github/skills
     init_skill.py my-api-helper --path .github/skills
     init_skill.py custom-skill --path /custom/location
@@ -187,30 +187,30 @@ Note: This is a text placeholder. Actual assets can be any file type.
 
 
 def title_case_skill_name(skill_name):
-    """Convert hyphenated skill name to Title Case for display."""
+    """将连字符形式的 skill 名称转换为 Title Case 以便显示。"""
     return ' '.join(word.capitalize() for word in skill_name.split('-'))
 
 
 def init_skill(skill_name, path):
     """
-    Initialize a new skill directory with template SKILL.md.
+    使用模板 SKILL.md 初始化新的 skill 目录。
 
-    Args:
-        skill_name: Name of the skill
-        path: Path where the skill directory should be created
+    参数:
+        skill_name: skill 名称
+        path: 应在其中创建 skill 目录的路径
 
-    Returns:
-        Path to created skill directory, or None if error
+    返回:
+        已创建的 skill 目录路径；若出错则返回 None
     """
-    # Determine skill directory path
+    # 确定 skill 目录路径
     skill_dir = Path(path).resolve() / skill_name
 
-    # Check if directory already exists
+    # 检查目录是否已存在
     if skill_dir.exists():
         print(f"❌ Error: Skill directory already exists: {skill_dir}")
         return None
 
-    # Create skill directory
+    # 创建 skill 目录
     try:
         skill_dir.mkdir(parents=True, exist_ok=False)
         print(f"✅ Created skill directory: {skill_dir}")
@@ -218,7 +218,7 @@ def init_skill(skill_name, path):
         print(f"❌ Error creating directory: {e}")
         return None
 
-    # Create SKILL.md from template
+    # 从模板创建 SKILL.md
     skill_title = title_case_skill_name(skill_name)
     skill_content = SKILL_TEMPLATE.format(
         skill_name=skill_name,
@@ -233,23 +233,23 @@ def init_skill(skill_name, path):
         print(f"❌ Error creating SKILL.md: {e}")
         return None
 
-    # Create resource directories with example files
+    # 创建带示例文件的资源目录
     try:
-        # Create scripts/ directory with example script
+        # 创建带示例脚本的 scripts/ 目录
         scripts_dir = skill_dir / 'scripts'
         scripts_dir.mkdir(exist_ok=True)
         example_script = scripts_dir / 'example.py'
         example_script.write_text(EXAMPLE_SCRIPT.format(skill_name=skill_name), encoding="utf-8")
         print("✅ Created scripts/example.py")
 
-        # Create references/ directory with example reference doc
+        # 创建带示例参考文档的 references/ 目录
         references_dir = skill_dir / 'references'
         references_dir.mkdir(exist_ok=True)
         example_reference = references_dir / 'api_reference.md'
         example_reference.write_text(EXAMPLE_REFERENCE.format(skill_title=skill_title), encoding="utf-8")
         print("✅ Created references/api_reference.md")
 
-        # Create assets/ directory with example asset placeholder
+        # 创建带示例资源占位文件的 assets/ 目录
         assets_dir = skill_dir / 'assets'
         assets_dir.mkdir(exist_ok=True)
         example_asset = assets_dir / 'example_asset.txt'
@@ -259,7 +259,7 @@ def init_skill(skill_name, path):
         print(f"❌ Error creating resource directories: {e}")
         return None
 
-    # Print next steps
+    # 打印后续步骤
     print(f"\n✅ Skill '{skill_name}' initialized successfully at {skill_dir}")
     print("\nNext steps:")
     print("1. Edit SKILL.md to complete the TODO items and update the description")

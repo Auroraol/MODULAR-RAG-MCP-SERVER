@@ -1,9 +1,9 @@
-"""Tests for structured JSON Lines logger (F2).
+"""结构化 JSON Lines 日志记录器（F2）的测试。
 
-Covers:
-- JSONFormatter output structure
-- get_trace_logger file handler setup
-- write_trace convenience function
+覆盖：
+- JSONFormatter 输出结构
+- get_trace_logger 文件 handler 设置
+- write_trace 便捷函数
 """
 
 import json
@@ -19,7 +19,7 @@ from src.observability.logger import JSONFormatter, get_trace_logger, write_trac
 
 
 class TestJSONFormatter:
-    """Verify JSONFormatter produces valid JSON with required fields."""
+    """校验 JSONFormatter 生成的 JSON 有效且包含必需字段。"""
 
     def _make_record(
         self, msg: str = "hello", level: int = logging.INFO, **extra: object
@@ -72,12 +72,12 @@ class TestJSONFormatter:
         record = self._make_record(custom_obj=object())
         line = fmt.format(record)
         obj = json.loads(line)
-        assert "custom_obj" in obj  # converted to str
+        assert "custom_obj" in obj  # 已转换为 str
 
     def test_single_line_output(self) -> None:
         fmt = JSONFormatter()
         line = fmt.format(self._make_record("no\nnewlines\nplease"))
-        # json.dumps by default escapes newlines as \\n
+        # json.dumps 默认将换行转义为 \\n
         assert "\n" not in line
 
 
@@ -85,7 +85,7 @@ class TestJSONFormatter:
 
 
 class TestGetTraceLogger:
-    """Verify get_trace_logger sets up JSON Lines file handler."""
+    """校验 get_trace_logger 正确设置 JSON Lines 文件 handler。"""
 
     def test_returns_logger(self, tmp_path: Path) -> None:
         p = tmp_path / "traces.jsonl"
@@ -119,7 +119,7 @@ class TestGetTraceLogger:
 
 
 class TestWriteTrace:
-    """Verify write_trace convenience function."""
+    """校验 write_trace 便捷函数。"""
 
     def test_creates_file(self, tmp_path: Path) -> None:
         p = tmp_path / "traces.jsonl"
@@ -148,7 +148,7 @@ class TestWriteTrace:
         assert p.exists()
 
     def test_round_trip_with_trace_context(self, tmp_path: Path) -> None:
-        """write_trace + TraceContext.to_dict() round-trip."""
+        """write_trace 与 TraceContext.to_dict() 的往返序列化。"""
         from src.core.trace.trace_context import TraceContext
 
         tc = TraceContext(trace_type="query")

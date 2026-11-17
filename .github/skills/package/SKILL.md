@@ -1,61 +1,61 @@
 ---
 name: package
-description: "Clean and package the project for distribution. Removes __pycache__, .venv, build artifacts, data caches, logs, IDE files, coverage reports, and sanitizes API keys in config. Produces a minimal, ready-to-share codebase. Use when user says 'package', 'clean project', 'clean up', '打包', '清理项目', '清理缓存', 'prepare for distribution', 'remove caches', or wants to deliver a clean copy of the code."
+description: "清理并打包项目以便分发。移除 __pycache__、.venv、构建产物、数据缓存、日志、IDE 文件、覆盖率报告，并清理配置中的 API Key。生成最小化、可直接分享的代码库。当用户说 'package'、'clean project'、'clean up'、'打包'、'清理项目'、'清理缓存'、'prepare for distribution'、'remove caches'，或希望交付一份干净的代码副本时使用。"
 ---
 
-# Package
+# Package — 打包
 
-One command cleans the project for distribution: remove caches, secrets, and artifacts.
+一条命令即可清理项目以便分发：移除缓存、密钥和产物。
 
 ---
 
-## Pipeline
+## 流程
 
 ```
 Dry-run → Confirm → Execute → Verify
 ```
 
-> **⚠️ Activate `.venv` before running scripts.**
-> - **Windows**: `.\.venv\Scripts\Activate.ps1`
-> - **macOS/Linux**: `source .venv/bin/activate`
+> **⚠️ 运行脚本前先激活 `.venv`。**
+> - **Windows**：`.\.venv\Scripts\Activate.ps1`
+> - **macOS/Linux**：`source .venv/bin/activate`
 
 ---
 
-## Step 1: Dry Run
+## 步骤 1：试运行
 
-Show what will be removed without deleting anything:
+展示将要移除的内容，但不实际删除任何东西：
 
 ```powershell
 python .github/skills/package/scripts/clean.py
 ```
 
-Review the output with the user. The script lists:
-- 📁 Directories to remove (with sizes)
-- 📄 Files to remove (with sizes)
-- 🔐 Config values to sanitize (API keys → placeholders)
+与用户一起审阅输出。脚本会列出：
+- 📁 要移除的目录（含大小）
+- 📄 要移除的文件（含大小）
+- 🔐 要脱敏的配置值（API Key → 占位符）
 
-## Step 2: Confirm with User
+## 步骤 2：向用户确认
 
-Before executing, summarize what will be deleted and ask the user to confirm. Offer options:
-- `--keep-data` — preserve `data/` and `logs/` (useful if user wants to keep ingested documents)
-- `--no-sanitize` — skip API key replacement in `config/settings.yaml`
+执行之前，汇总将要删除的内容并请用户确认。提供以下选项：
+- `--keep-data` — 保留 `data/` 和 `logs/`（如果用户想保留已摄取的文档则很有用）
+- `--no-sanitize` — 跳过 `config/settings.yaml` 中的 API Key 替换
 
-## Step 3: Execute
+## 步骤 3：执行
 
 ```powershell
-# Full clean (removes everything including data)
+# 完全清理（移除包括数据在内的一切）
 python .github/skills/package/scripts/clean.py --execute
 
-# Keep data and logs
+# 保留数据和日志
 python .github/skills/package/scripts/clean.py --execute --keep-data
 
-# Skip secret sanitization
+# 跳过密钥脱敏
 python .github/skills/package/scripts/clean.py --execute --no-sanitize
 ```
 
-## Step 4: Verify
+## 步骤 4：验证
 
-After cleanup, verify the workspace is clean:
+清理后，验证工作区是否干净：
 
 ```powershell
 # Check no __pycache__ remains
@@ -74,26 +74,26 @@ print(f'{len(real)} real API key(s) found') if real else print('API keys sanitiz
 "
 ```
 
-Report results to user.
+向用户报告结果。
 
 ---
 
-## What Gets Removed
+## 会被移除的内容
 
-| Category | Patterns |
+| 类别 | 模式 |
 |----------|----------|
-| Python caches | `__pycache__/`, `*.pyc`, `*.pyo`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/` |
-| Virtual envs | `.venv/`, `venv/`, `env/` |
-| Build artifacts | `build/`, `dist/`, `*.egg-info/`, `.eggs/`, `wheels/` |
-| IDE files | `.idea/`, `.vscode/`, `*.swp`, `*.swo` |
-| Coverage | `htmlcov/`, `.coverage`, `coverage.xml`, `.tox/`, `.nox/` |
-| Data & logs | `data/`, `logs/`, `cache/` (skip with `--keep-data`) |
-| Secrets | `.env`, `.env.local`, `secrets.yaml`, `test_credentials.yaml` |
-| Stale artifacts | `nonexistent_traces.jsonl/` |
-| Config backups | `settings.yaml.bak`, `settings.yaml.qa_backup` |
-| Test artifacts | `.claude/skills/test-skill/`, `test_data/chroma/` |
-| Skill caches | `.github/skills/auto-coder/.spec_hash`, `.claude/skills/auto-coder/.spec_hash` |
+| Python 缓存 | `__pycache__/`、`*.pyc`、`*.pyo`、`.pytest_cache/`、`.mypy_cache/`、`.ruff_cache/` |
+| 虚拟环境 | `.venv/`、`venv/`、`env/` |
+| 构建产物 | `build/`、`dist/`、`*.egg-info/`、`.eggs/`、`wheels/` |
+| IDE 文件 | `.idea/`、`.vscode/`、`*.swp`、`*.swo` |
+| 覆盖率 | `htmlcov/`、`.coverage`、`coverage.xml`、`.tox/`、`.nox/` |
+| 数据与日志 | `data/`、`logs/`、`cache/`（使用 `--keep-data` 跳过） |
+| 密钥 | `.env`、`.env.local`、`secrets.yaml`、`test_credentials.yaml` |
+| 陈旧产物 | `nonexistent_traces.jsonl/` |
+| 配置备份 | `settings.yaml.bak`、`settings.yaml.qa_backup` |
+| 测试产物 | `.claude/skills/test-skill/`、`test_data/chroma/` |
+| 技能缓存 | `.github/skills/auto-coder/.spec_hash`、`.claude/skills/auto-coder/.spec_hash` |
 
-## What Gets Sanitized (not removed)
+## 会被脱敏的内容（不删除）
 
-- `config/settings.yaml`: `api_key` → `"YOUR_API_KEY_HERE"`, `azure_endpoint` → placeholder
+- `config/settings.yaml`：`api_key` → `"YOUR_API_KEY_HERE"`，`azure_endpoint` → 占位符

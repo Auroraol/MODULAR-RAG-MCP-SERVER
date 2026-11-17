@@ -1,6 +1,6 @@
 """
-Generate a PDF for blogger introduction and notes overview.
-Contains personal introduction, notes description, and sample images.
+生成博主介绍与笔记概览的 PDF。
+包含个人介绍、笔记说明以及示例图片。
 """
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -20,16 +20,16 @@ import os
 
 
 def register_chinese_font():
-    """Register a Chinese font for PDF generation."""
-    # Try to find a Chinese font on the system
+    """注册用于 PDF 生成的中文字体。"""
+    # 尝试在系统中查找中文字体
     font_paths = [
-        # Windows fonts
+        # Windows 字体
         "C:/Windows/Fonts/msyh.ttc",  # 微软雅黑
         "C:/Windows/Fonts/simsun.ttc",  # 宋体
         "C:/Windows/Fonts/simhei.ttf",  # 黑体
-        # Mac fonts
+        # Mac 字体
         "/System/Library/Fonts/PingFang.ttc",
-        # Linux fonts
+        # Linux 字体
         "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
     ]
     
@@ -41,12 +41,12 @@ def register_chinese_font():
             except:
                 continue
     
-    # Fallback to Helvetica if no Chinese font found
+    # 若找不到中文字体则回退到 Helvetica
     return 'Helvetica'
 
 
 def get_image_paths():
-    """Get paths for the external images."""
+    """获取外部图片的路径。"""
     script_dir = Path(__file__).parent
     sample_docs_dir = script_dir / "sample_documents"
     
@@ -57,12 +57,12 @@ def get_image_paths():
 
 
 def generate_blogger_intro_pdf(output_path):
-    """Generate a PDF document with blogger introduction."""
-    
-    # Register Chinese font
+    """生成包含博主介绍的 PDF 文档。"""
+
+    # 注册中文字体
     chinese_font = register_chinese_font()
-    
-    # Create the PDF document
+
+    # 创建 PDF 文档
     doc = SimpleDocTemplate(
         str(output_path),
         pagesize=A4,
@@ -72,13 +72,13 @@ def generate_blogger_intro_pdf(output_path):
         bottomMargin=30,
     )
     
-    # Container for the 'Flowable' objects
+    # 'Flowable' 对象容器
     elements = []
-    
-    # Define styles
+
+    # 定义样式
     styles = getSampleStyleSheet()
-    
-    # Custom styles with Chinese font
+
+    # 使用中文字体的自定义样式
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
@@ -167,7 +167,7 @@ def generate_blogger_intro_pdf(output_path):
     """
     elements.append(Paragraph(achievement_text.strip(), body_style))
     
-    # Offer列表
+    # Offer 列表
     offers = [
         "京东（算法岗）",
         "千问C端",
@@ -253,21 +253,21 @@ def generate_blogger_intro_pdf(output_path):
     # ==================== 图片1：设计思路 ====================
     elements.append(Paragraph("图片1：设计思路", heading_style))
     
-    # Get image paths
+    # 图片路径
     image_paths = get_image_paths()
-    
-    # Add design thinking image (use external image)
+
+    # 添加设计思路图片（使用外部图片）
     design_img_path = image_paths['design_thinking']
     if design_img_path.exists():
-        # Calculate appropriate size while maintaining aspect ratio
+        # 在保持长宽比的前提下计算合适的尺寸
         with PILImage.open(design_img_path) as pil_img:
             orig_width, orig_height = pil_img.size
-            # Max width is 6 inches, calculate height to maintain ratio
+            # 最大宽度为 6 英寸，按比例计算高度
             max_width = 6 * inch
             aspect_ratio = orig_height / orig_width
-            img_width = min(max_width, orig_width * 0.8)  # Scale down if needed
+            img_width = min(max_width, orig_width * 0.8)  # 必要时缩小
             img_height = img_width * aspect_ratio
-            # Cap max height
+            # 限制最大高度
             if img_height > 7 * inch:
                 img_height = 7 * inch
                 img_width = img_height / aspect_ratio
@@ -282,18 +282,18 @@ def generate_blogger_intro_pdf(output_path):
     # ==================== 图片2：项目介绍 ====================
     elements.append(Paragraph("图片2：项目介绍", heading_style))
     
-    # Add project intro image (use external image)
+    # 添加项目介绍图片（使用外部图片）
     project_img_path = image_paths['project_intro']
     if project_img_path.exists():
-        # Calculate appropriate size while maintaining aspect ratio
+        # 在保持长宽比的前提下计算合适的尺寸
         with PILImage.open(project_img_path) as pil_img:
             orig_width, orig_height = pil_img.size
-            # Max width is 6 inches, calculate height to maintain ratio
+            # 最大宽度为 6 英寸，按比例计算高度
             max_width = 6 * inch
             aspect_ratio = orig_height / orig_width
-            img_width = min(max_width, orig_width * 0.8)  # Scale down if needed
+            img_width = min(max_width, orig_width * 0.8)  # 必要时缩小
             img_height = img_width * aspect_ratio
-            # Cap max height
+            # 限制最大高度
             if img_height > 7 * inch:
                 img_height = 7 * inch
                 img_width = img_height / aspect_ratio
@@ -303,20 +303,20 @@ def generate_blogger_intro_pdf(output_path):
     else:
         elements.append(Paragraph(f"[图片未找到: {project_img_path}]", body_style))
 
-    # Build the PDF
+    # 构建 PDF
     doc.build(elements)
     print(f"PDF generated successfully: {output_path}")
 
 
 def main():
-    """Main function to generate the blogger intro PDF."""
-    # Get the output path
+    """生成博主介绍 PDF 的主函数。"""
+    # 获取输出路径
     output_dir = Path(__file__).parent / "sample_documents"
     output_dir.mkdir(exist_ok=True)
-    
+
     output_path = output_dir / "blogger_intro.pdf"
-    
-    # Generate the PDF
+
+    # 生成 PDF
     generate_blogger_intro_pdf(output_path)
 
 

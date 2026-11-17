@@ -1,7 +1,6 @@
-"""Unit tests for ResponseBuilder and CitationGenerator.
+"""ResponseBuilder 与 CitationGenerator 的单元测试。
 
-This module tests the response building components used by MCP tools
-to generate formatted output with citations.
+本模块测试 MCP 工具用于生成带引用格式化输出的响应构建组件。
 """
 
 import pytest
@@ -13,12 +12,12 @@ from src.core.types import RetrievalResult
 
 
 # =============================================================================
-# Test Fixtures
+# 测试夹具
 # =============================================================================
 
 @pytest.fixture
 def sample_retrieval_results() -> List[RetrievalResult]:
-    """Create sample retrieval results for testing."""
+    """创建用于测试的示例检索结果。"""
     return [
         RetrievalResult(
             chunk_id="doc1_chunk_001",
@@ -58,47 +57,47 @@ def sample_retrieval_results() -> List[RetrievalResult]:
 
 @pytest.fixture
 def empty_retrieval_results() -> List[RetrievalResult]:
-    """Empty results list."""
+    """空结果列表。"""
     return []
 
 
 @pytest.fixture
 def citation_generator() -> CitationGenerator:
-    """Create CitationGenerator instance."""
+    """创建 CitationGenerator 实例。"""
     return CitationGenerator()
 
 
 @pytest.fixture
 def response_builder() -> ResponseBuilder:
-    """Create ResponseBuilder instance."""
+    """创建 ResponseBuilder 实例。"""
     return ResponseBuilder()
 
 
 # =============================================================================
-# CitationGenerator Tests
+# CitationGenerator 测试
 # =============================================================================
 
 class TestCitationGenerator:
-    """Tests for CitationGenerator class."""
-    
+    """CitationGenerator 类的测试。"""
+
     def test_generate_citations_basic(
         self,
         citation_generator: CitationGenerator,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test basic citation generation."""
+        """测试基本的引用生成。"""
         citations = citation_generator.generate(sample_retrieval_results)
         
         assert len(citations) == 3
         
-        # Check first citation
+        # 检查第一个引用
         assert citations[0].index == 1
         assert citations[0].chunk_id == "doc1_chunk_001"
         assert citations[0].source == "docs/azure-guide.pdf"
         assert citations[0].score == 0.95
         assert citations[0].page == 5
         
-        # Check indexing is 1-based
+        # 检查索引从 1 开始
         assert citations[1].index == 2
         assert citations[2].index == 3
     
@@ -107,7 +106,7 @@ class TestCitationGenerator:
         citation_generator: CitationGenerator,
         empty_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test citation generation with empty results."""
+        """测试结果为空时的引用生成。"""
         citations = citation_generator.generate(empty_retrieval_results)
         assert citations == []
     
@@ -116,7 +115,7 @@ class TestCitationGenerator:
         citation_generator: CitationGenerator,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test Citation.to_dict() serialization."""
+        """测试 Citation.to_dict() 序列化。"""
         citations = citation_generator.generate(sample_retrieval_results)
         
         citation_dict = citations[0].to_dict()
@@ -129,7 +128,7 @@ class TestCitationGenerator:
         assert "text_snippet" in citation_dict
     
     def test_text_snippet_truncation(self) -> None:
-        """Test that long text is truncated in snippets."""
+        """测试片段中的长文本会被截断。"""
         generator = CitationGenerator(snippet_max_length=50)
         
         result = RetrievalResult(
@@ -141,7 +140,7 @@ class TestCitationGenerator:
         
         citations = generator.generate([result])
         
-        # Snippet should be truncated
+        # 片段应被截断
         assert len(citations[0].text_snippet) <= 60  # 50 + "..."
         assert citations[0].text_snippet.endswith("...")
     
@@ -150,22 +149,22 @@ class TestCitationGenerator:
         citation_generator: CitationGenerator,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test that metadata fields are correctly extracted."""
+        """测试元数据字段被正确提取。"""
         citations = citation_generator.generate(sample_retrieval_results)
         
-        # First citation should have title in metadata
+        # 第一个引用的元数据中应包含 title
         assert "title" in citations[0].metadata
         assert citations[0].metadata["title"] == "Azure OpenAI 简介"
         
-        # Check chunk_index is included
+        # 检查包含 chunk_index
         assert "chunk_index" in citations[0].metadata
         assert citations[0].metadata["chunk_index"] == 0
     
     def test_page_number_extraction(self) -> None:
-        """Test page number extraction from different metadata formats."""
+        """测试从不同元数据格式中提取页码。"""
         generator = CitationGenerator()
         
-        # Test with 'page' key
+        # 测试使用 'page' 键
         result1 = RetrievalResult(
             chunk_id="test_001",
             score=0.9,
@@ -173,7 +172,7 @@ class TestCitationGenerator:
             metadata={"source_path": "test.pdf", "page": 5},
         )
         
-        # Test with 'page_num' key
+        # 测试使用 'page_num' 键
         result2 = RetrievalResult(
             chunk_id="test_002",
             score=0.8,
@@ -181,7 +180,7 @@ class TestCitationGenerator:
             metadata={"source_path": "test.pdf", "page_num": 10},
         )
         
-        # Test without page info
+        # 测试不包含页码信息
         result3 = RetrievalResult(
             chunk_id="test_003",
             score=0.7,
@@ -199,25 +198,25 @@ class TestCitationGenerator:
         self,
         citation_generator: CitationGenerator,
     ) -> None:
-        """Test citation marker formatting."""
+        """测试引用标记的格式化。"""
         assert citation_generator.format_citation_marker(1) == "[1]"
         assert citation_generator.format_citation_marker(10) == "[10]"
         assert citation_generator.format_citation_marker(99) == "[99]"
 
 
 # =============================================================================
-# ResponseBuilder Tests
+# ResponseBuilder 测试
 # =============================================================================
 
 class TestResponseBuilder:
-    """Tests for ResponseBuilder class."""
-    
+    """ResponseBuilder 类的测试。"""
+
     def test_build_basic_response(
         self,
         response_builder: ResponseBuilder,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test basic response building."""
+        """测试基本的响应构建。"""
         response = response_builder.build(
             results=sample_retrieval_results,
             query="Azure OpenAI 配置",
@@ -236,7 +235,7 @@ class TestResponseBuilder:
         response_builder: ResponseBuilder,
         empty_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test response building with empty results."""
+        """测试结果为空时的响应构建。"""
         response = response_builder.build(
             results=empty_retrieval_results,
             query="不存在的查询",
@@ -253,13 +252,13 @@ class TestResponseBuilder:
         response_builder: ResponseBuilder,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test that content contains citation markers."""
+        """测试内容中包含引用标记。"""
         response = response_builder.build(
             results=sample_retrieval_results,
             query="Azure 配置",
         )
         
-        # Should contain citation markers
+        # 应包含引用标记
         assert "[1]" in response.content
         assert "[2]" in response.content
         assert "[3]" in response.content
@@ -269,13 +268,13 @@ class TestResponseBuilder:
         response_builder: ResponseBuilder,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test that content contains source information."""
+        """测试内容中包含来源信息。"""
         response = response_builder.build(
             results=sample_retrieval_results,
             query="Azure",
         )
         
-        # Should contain source paths
+        # 应包含来源路径
         assert "azure-guide.pdf" in response.content
         assert "gpt4-usage.md" in response.content
     
@@ -284,13 +283,13 @@ class TestResponseBuilder:
         response_builder: ResponseBuilder,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test that content contains relevance scores."""
+        """测试内容中包含相关度分数。"""
         response = response_builder.build(
             results=sample_retrieval_results,
             query="Azure",
         )
         
-        # Should contain score indicators
+        # 应包含分数指示符
         assert "相关度" in response.content or "95%" in response.content
     
     def test_response_to_dict(
@@ -298,7 +297,7 @@ class TestResponseBuilder:
         response_builder: ResponseBuilder,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test MCPToolResponse.to_dict() serialization."""
+        """测试 MCPToolResponse.to_dict() 序列化。"""
         response = response_builder.build(
             results=sample_retrieval_results,
             query="Azure",
@@ -316,7 +315,7 @@ class TestResponseBuilder:
         response_builder: ResponseBuilder,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test MCPToolResponse.to_mcp_content() for MCP protocol."""
+        """测试面向 MCP 协议的 MCPToolResponse.to_mcp_content()。"""
         from mcp import types
         
         response = response_builder.build(
@@ -327,13 +326,13 @@ class TestResponseBuilder:
         content_blocks = response.to_mcp_content()
         
         assert len(content_blocks) >= 1
-        # Now returns TextContent objects instead of dicts
+        # 现在返回的是 TextContent 对象而不是字典
         assert isinstance(content_blocks[0], types.TextContent)
         assert content_blocks[0].type == "text"
         assert "检索结果" in content_blocks[0].text
     
     def test_max_results_in_content(self) -> None:
-        """Test that max_results_in_content is respected."""
+        """测试 max_results_in_content 参数生效。"""
         builder = ResponseBuilder(max_results_in_content=2)
         
         results = [
@@ -348,10 +347,10 @@ class TestResponseBuilder:
         
         response = builder.build(results=results, query="test")
         
-        # Content should mention that more results exist
+        # 内容中应提示还有更多结果
         assert "还有" in response.content or "未显示" in response.content
         
-        # But all citations should still be included
+        # 但所有引用仍应被包含
         assert len(response.citations) == 5
     
     def test_collection_in_metadata(
@@ -359,8 +358,8 @@ class TestResponseBuilder:
         response_builder: ResponseBuilder,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test that collection is included in metadata when provided."""
-        # With collection
+        """测试提供 collection 时它会被包含在元数据中。"""
+        # 提供 collection
         response1 = response_builder.build(
             results=sample_retrieval_results,
             query="test",
@@ -368,7 +367,7 @@ class TestResponseBuilder:
         )
         assert response1.metadata["collection"] == "my_collection"
         
-        # Without collection
+        # 不提供 collection
         response2 = response_builder.build(
             results=sample_retrieval_results,
             query="test",
@@ -379,7 +378,7 @@ class TestResponseBuilder:
         self,
         response_builder: ResponseBuilder,
     ) -> None:
-        """Test empty response mentions collection name."""
+        """测试空响应中会提及 collection 名称。"""
         response = response_builder.build(
             results=[],
             query="test",
@@ -390,14 +389,14 @@ class TestResponseBuilder:
 
 
 # =============================================================================
-# Citation Dataclass Tests
+# Citation 数据类测试
 # =============================================================================
 
 class TestCitationDataclass:
-    """Tests for Citation dataclass."""
-    
+    """Citation 数据类的测试。"""
+
     def test_citation_creation(self) -> None:
-        """Test Citation object creation."""
+        """测试 Citation 对象的创建。"""
         citation = Citation(
             index=1,
             chunk_id="test_001",
@@ -415,7 +414,7 @@ class TestCitationDataclass:
         assert citation.page == 5
     
     def test_citation_to_dict_without_page(self) -> None:
-        """Test Citation.to_dict() when page is None."""
+        """测试 page 为 None 时的 Citation.to_dict()。"""
         citation = Citation(
             index=1,
             chunk_id="test_001",
@@ -429,7 +428,7 @@ class TestCitationDataclass:
         assert "page" not in citation_dict
     
     def test_citation_score_rounding(self) -> None:
-        """Test that scores are rounded in to_dict()."""
+        """测试 to_dict() 中分数会被四舍五入。"""
         citation = Citation(
             index=1,
             chunk_id="test_001",
@@ -440,19 +439,19 @@ class TestCitationDataclass:
         
         citation_dict = citation.to_dict()
         
-        # Score should be rounded to 4 decimal places
+        # 分数应四舍五入到 4 位小数
         assert citation_dict["score"] == 0.1235
 
 
 # =============================================================================
-# MCPToolResponse Dataclass Tests
+# MCPToolResponse 数据类测试
 # =============================================================================
 
 class TestMCPToolResponseDataclass:
-    """Tests for MCPToolResponse dataclass."""
-    
+    """MCPToolResponse 数据类的测试。"""
+
     def test_response_creation(self) -> None:
-        """Test MCPToolResponse object creation."""
+        """测试 MCPToolResponse 对象的创建。"""
         response = MCPToolResponse(
             content="Test content",
             citations=[],
@@ -466,7 +465,7 @@ class TestMCPToolResponseDataclass:
         assert response.is_empty is False
     
     def test_response_default_values(self) -> None:
-        """Test MCPToolResponse default values."""
+        """测试 MCPToolResponse 的默认值。"""
         response = MCPToolResponse(content="Test")
         
         assert response.citations == []
@@ -475,17 +474,17 @@ class TestMCPToolResponseDataclass:
 
 
 # =============================================================================
-# Integration Tests
+# 集成测试
 # =============================================================================
 
 class TestResponseBuilderIntegration:
-    """Integration tests for ResponseBuilder with CitationGenerator."""
-    
+    """ResponseBuilder 与 CitationGenerator 的集成测试。"""
+
     def test_full_response_generation_flow(
         self,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test complete response generation flow."""
+        """测试完整的响应生成流程。"""
         builder = ResponseBuilder()
         
         response = builder.build(
@@ -494,24 +493,24 @@ class TestResponseBuilderIntegration:
             collection="technical_docs",
         )
         
-        # Verify response structure
+        # 验证响应结构
         assert isinstance(response, MCPToolResponse)
         assert not response.is_empty
         
-        # Verify content
+        # 验证内容
         assert "检索结果" in response.content
         assert "Azure" in response.content
         
-        # Verify citations
+        # 验证引用
         assert len(response.citations) == 3
         assert all(isinstance(c, Citation) for c in response.citations)
         
-        # Verify metadata
+        # 验证元数据
         assert response.metadata["query"] == "如何配置 Azure OpenAI？"
         assert response.metadata["collection"] == "technical_docs"
         assert response.metadata["result_count"] == 3
         
-        # Verify serialization
+        # 验证序列化
         response_dict = response.to_dict()
         assert "content" in response_dict
         assert "structuredContent" in response_dict
@@ -520,7 +519,7 @@ class TestResponseBuilderIntegration:
         self,
         sample_retrieval_results: List[RetrievalResult],
     ) -> None:
-        """Test ResponseBuilder with custom CitationGenerator."""
+        """测试使用自定义 CitationGenerator 的 ResponseBuilder。"""
         custom_generator = CitationGenerator(
             snippet_max_length=50,
             include_metadata_fields=["title"],
@@ -532,11 +531,11 @@ class TestResponseBuilderIntegration:
             query="test",
         )
         
-        # Snippets should be shorter
+        # 片段应更短
         for citation in response.citations:
             assert len(citation.text_snippet) <= 60  # 50 + "..."
         
-        # Only 'title' should be in metadata
+        # 元数据中只应包含 'title'
         for citation in response.citations:
             if citation.metadata:
                 assert "chunk_index" not in citation.metadata

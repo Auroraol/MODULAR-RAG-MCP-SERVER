@@ -1,14 +1,13 @@
 """
-Libs Layer - Pluggable abstraction layer.
+Libs 层 —— 可插拔抽象层。
 
-This package contains the factory pattern implementations for
-pluggable components:
-- LLM clients
-- Embedding services
-- Splitters
-- Vector stores
-- Rerankers
-- Evaluators
+本包包含以下可插拔组件的工厂模式实现：
+- LLM 客户端
+- Embedding 服务
+- 切分器
+- Vector Store
+- Reranker
+- 评估器
 """
 
 __all__ = []

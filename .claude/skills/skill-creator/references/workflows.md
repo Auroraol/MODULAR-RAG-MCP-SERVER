@@ -1,8 +1,8 @@
-# Workflow Patterns
+# 工作流模式
 
-## Sequential Workflows
+## 顺序工作流
 
-For complex tasks, break operations into clear, sequential steps. It is often helpful to give the agent an overview of the process towards the beginning of SKILL.md:
+对于复杂任务，将操作拆分为清晰的顺序步骤。在 SKILL.md 开头附近向 agent 提供流程概览通常很有帮助：
 
 ```markdown
 Filling a PDF form involves these steps:
@@ -14,9 +14,9 @@ Filling a PDF form involves these steps:
 5. Verify output (run verify_output.py)
 ```
 
-## Conditional Workflows
+## 条件工作流
 
-For tasks with branching logic, guide the agent through decision points:
+对于带分支逻辑的任务，引导 agent 通过决策点：
 
 ```markdown
 1. Determine the modification type:

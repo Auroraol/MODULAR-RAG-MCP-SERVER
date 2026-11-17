@@ -1,1 +1,1 @@
-"""Dashboard pages package."""
+"""Dashboard 页面包。"""

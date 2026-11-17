@@ -1,12 +1,12 @@
-"""Integration tests for ChunkRefiner with real LLM providers.
+"""ChunkRefiner 接入真实 LLM 提供方的集成测试。
 
-These tests require actual API keys and will make real API calls.
-Run with: pytest tests/integration/test_chunk_refiner_llm.py -v -s
+这些测试需要真实的 API key，并会发起真实的 API 调用。
+运行方式：pytest tests/integration/test_chunk_refiner_llm.py -v -s
 
-Required environment variables:
-    - OPENAI_API_KEY: For OpenAI tests
-    - AZURE_OPENAI_API_KEY: For Azure tests
-    - OLLAMA_BASE_URL: For Ollama tests (default: http://localhost:11434)
+所需环境变量:
+    - OPENAI_API_KEY: 用于 OpenAI 测试
+    - AZURE_OPENAI_API_KEY: 用于 Azure 测试
+    - OLLAMA_BASE_URL: 用于 Ollama 测试（默认: http://localhost:11434）
 """
 
 import os
@@ -19,7 +19,7 @@ from src.core.trace.trace_context import TraceContext
 from src.ingestion.transform.chunk_refiner import ChunkRefiner
 
 
-# Test data: Realistic noisy chunk from PDF extraction
+# 测试数据：来自 PDF 提取的真实含噪 chunk
 NOISY_PDF_CHUNK = """
 ────────────────────────────
 Page 42 | Technical Documentation
@@ -61,11 +61,11 @@ EXPECTED_CLEAN_RESULT_KEYWORDS = [
 ]
 
 
-# Fixtures
+# Fixture 定义
 
 @pytest.fixture
 def sample_noisy_chunk():
-    """Create a sample noisy chunk for testing."""
+    """创建用于测试的含噪 chunk 样本。"""
     return Chunk(
         id="test_pdf_chunk_001",
         text=NOISY_PDF_CHUNK,
@@ -75,52 +75,52 @@ def sample_noisy_chunk():
 
 
 def create_settings_for_provider(provider: str) -> Settings:
-    """Create settings object for specific provider.
-    
-    For Azure provider, loads actual settings from settings.yaml.
-    For other providers, uses environment variables.
-    
-    Args:
-        provider: One of 'openai', 'azure', 'ollama'
-    
-    Returns:
-        Settings object configured for the provider
+    """为指定 provider 创建配置对象。
+
+    对于 Azure provider，从 settings.yaml 加载实际配置。
+    其他 provider 则使用环境变量。
+
+    参数:
+        provider: 'openai'、'azure'、'ollama' 之一
+
+    返回:
+        为对应 provider 配置的 Settings 对象
     """
     if provider == 'azure':
-        # Load real settings from settings.yaml for Azure
+        # 对于 Azure，从 settings.yaml 加载真实配置
         try:
             import yaml
             with open("config/settings.yaml", "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
-            
-            # Inject into environment variables for AzureLLM
+
+            # 注入环境变量供 AzureLLM 使用
             if 'llm' in config and config['llm'].get('provider') == 'azure':
                 os.environ["AZURE_OPENAI_API_KEY"] = config['llm'].get('api_key', '')
                 os.environ["AZURE_OPENAI_ENDPOINT"] = config['llm'].get('azure_endpoint', '')
                 os.environ["ENDPOINT"] = config['llm'].get('azure_endpoint', '')
-                
+
                 os.environ["AZURE_OPENAI_API_VERSION"] = config['llm'].get('api_version', '')
-                os.environ["OPENAI_API_VERSION"] = config['llm'].get('api_version', '') 
-            
+                os.environ["OPENAI_API_VERSION"] = config['llm'].get('api_version', '')
+
             real_settings = load_settings("config/settings.yaml")
 
-            # Create a Mock Settings object to allow modification (real settings are frozen)
+            # 创建 Mock Settings 对象以便修改（真实配置是冻结的）
             settings = Mock(spec=Settings)
-            # Copy necessary frozen configs
+            # 复制必要的冻结配置
             settings.llm = real_settings.llm
             settings.ingestion = Mock()
-            # Enable LLM for chunk refiner
+            # 为 chunk refiner 启用 LLM
             settings.ingestion.chunk_refiner = {'use_llm': True}
             return settings
         except Exception as e:
             pytest.skip(f"Failed to load settings.yaml or configure Azure: {e}")
-    
-    # For non-Azure providers, use environment variables
+
+    # 非 Azure provider 使用环境变量
     settings = Mock(spec=Settings)
     settings.ingestion = Mock()
     settings.ingestion.chunk_refiner = {'use_llm': True}
-    
-    # LLM configuration
+
+    # LLM 配置
     settings.llm = Mock()
     settings.llm.provider = provider
     
@@ -138,39 +138,39 @@ def create_settings_for_provider(provider: str) -> Settings:
     return settings
 
 
-# Helper function to check provider availability
+# 检查 provider 可用性的辅助函数
 
 def is_provider_available(provider: str) -> tuple[bool, str]:
-    """Check if provider credentials are available.
-    
-    Returns:
+    """检查 provider 的凭据是否可用。
+
+    返回:
         (is_available, env_var_name)
     """
     if provider == 'azure':
-        # For Azure, check if settings.yaml exists and has LLM config
+        # 对于 Azure，检查 settings.yaml 是否存在且包含 LLM 配置
         try:
             import yaml
             with open("config/settings.yaml", "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
-            
+
             if 'llm' in config and config['llm'].get('provider') == 'azure':
                 return True, 'settings.yaml'
         except:
             pass
         return False, 'settings.yaml'
-        
+
     if provider == 'openai':
         env_var = 'OPENAI_API_KEY'
         return os.getenv(env_var) is not None, env_var
-        
+
     elif provider == 'ollama':
-        # Ollama assumed available if base_url is set or default
+        # 若设置了 base_url 或使用默认值，则假定 Ollama 可用
         return True, 'OLLAMA_BASE_URL'
-        
+
     return False, ''
 
 
-# Test Cases
+# 测试用例
 
 @pytest.mark.integration
 @pytest.mark.parametrize("provider,env_var", [
@@ -179,51 +179,51 @@ def is_provider_available(provider: str) -> tuple[bool, str]:
     ("ollama", "OLLAMA_BASE_URL"),
 ])
 def test_multiple_providers_if_available(provider, env_var, sample_noisy_chunk):
-    """Test refinement with multiple LLM providers (if configured).
-    
-    This test will be skipped for providers without credentials.
+    """测试使用多个 LLM provider 进行精炼（若已配置）。
+
+    未配置凭据的 provider 将跳过该测试。
     """
     available, env_name = is_provider_available(provider)
-    
+
     if not available:
         pytest.skip(f"Skipping {provider} test: {env_name} not set")
-    
-    # Create settings for provider
+
+    # 为 provider 创建配置
     settings = create_settings_for_provider(provider)
-    
-    # Create refiner
+
+    # 创建 refiner
     refiner = ChunkRefiner(settings)
     trace = TraceContext()
-    
-    # Perform refinement
+
+    # 执行精炼
     result = refiner.transform([sample_noisy_chunk], trace=trace)
-    
-    # Assertions
+
+    # 断言
     assert len(result) == 1
     refined_chunk = result[0]
-    
-    # Should be marked as LLM-refined
+
+    # 应标记为由 LLM 精炼
     assert refined_chunk.metadata['refined_by'] == 'llm', \
         f"Expected LLM refinement for {provider}, got {refined_chunk.metadata.get('refined_by')}"
-    
-    # Refined text should be cleaner (no separator lines, no HTML)
+
+    # 精炼后的文本应更干净（无分隔线、无 HTML）
     assert '────────────' not in refined_chunk.text
     assert '<!-- ' not in refined_chunk.text
     assert '<div' not in refined_chunk.text
     assert 'Footer:' not in refined_chunk.text.lower()
-    
-    # Should preserve key content
+
+    # 应保留关键内容
     for keyword in EXPECTED_CLEAN_RESULT_KEYWORDS:
         assert keyword in refined_chunk.text, \
             f"Expected keyword '{keyword}' not found in refined text"
-    
-    # Trace should record LLM usage
+
+    # Trace 应记录 LLM 使用情况
     stage_data = trace.get_stage_data('chunk_refiner')
     assert stage_data is not None
     assert stage_data['data']['llm_enhanced_count'] == 1
     assert stage_data['data']['fallback_count'] == 0
-    
-    # Print for manual review
+
+    # 打印以便人工检查
     print(f"\n{'='*60}")
     print(f"Provider: {provider}")
     print(f"{'='*60}")
@@ -237,8 +237,8 @@ def test_multiple_providers_if_available(provider, env_var, sample_noisy_chunk):
 
 @pytest.mark.integration
 def test_graceful_fallback_with_invalid_model(sample_noisy_chunk):
-    """Test that refiner falls back to rule-based when LLM fails."""
-    # Create settings with intentionally invalid model
+    """测试 LLM 失败时 refiner 回退到基于规则的实现。"""
+    # 创建故意使用无效模型的配置
     settings = Mock(spec=Settings)
     settings.ingestion = Mock()
     settings.ingestion.chunk_refiner = {'use_llm': True}
@@ -246,19 +246,19 @@ def test_graceful_fallback_with_invalid_model(sample_noisy_chunk):
     settings.llm.provider = 'openai'
     settings.llm.model = 'nonexistent-model-xyz'
     settings.llm.api_key = os.getenv('OPENAI_API_KEY', 'fake-key')
-    
+
     refiner = ChunkRefiner(settings)
     trace = TraceContext()
-    
-    # Should not crash, should fallback
+
+    # 不应崩溃，应回退
     result = refiner.transform([sample_noisy_chunk], trace=trace)
-    
+
     assert len(result) == 1
-    # Should fallback to rule-based
+    # 应回退到基于规则的方式
     assert result[0].metadata['refined_by'] == 'rule'
     assert 'refine_fallback_reason' in result[0].metadata
-    
-    # Should still apply rule-based cleaning
+
+    # 仍应应用基于规则的清洗
     assert '────────────' not in result[0].text
     assert 'Footer:' not in result[0].text
 
@@ -266,24 +266,24 @@ def test_graceful_fallback_with_invalid_model(sample_noisy_chunk):
 @pytest.mark.integration
 @pytest.mark.skipif(not is_provider_available('openai')[0], reason="OPENAI_API_KEY not set")
 def test_refinement_quality_comparison(sample_noisy_chunk):
-    """Compare rule-based vs LLM refinement quality.
-    
-    This test provides visual comparison for manual quality assessment.
+    """对比基于规则与基于 LLM 的精炼质量。
+
+    该测试提供可视化对比，便于人工评估质量。
     """
-    # Rule-based only
+    # 仅基于规则
     settings_rule = Mock(spec=Settings)
     settings_rule.ingestion = Mock()
     settings_rule.ingestion.chunk_refiner = {'use_llm': False}
-    
+
     refiner_rule = ChunkRefiner(settings_rule)
     result_rule = refiner_rule.transform([sample_noisy_chunk])
-    
-    # LLM-enhanced
+
+    # LLM 增强
     settings_llm = create_settings_for_provider('openai')
     refiner_llm = ChunkRefiner(settings_llm)
     result_llm = refiner_llm.transform([sample_noisy_chunk])
-    
-    # Print comparison
+
+    # 打印对比
     print(f"\n{'='*60}")
     print("QUALITY COMPARISON")
     print(f"{'='*60}")
@@ -297,7 +297,7 @@ def test_refinement_quality_comparison(sample_noisy_chunk):
     print(result_llm[0].text)
     print(f"{'='*60}\n")
     
-    # Basic assertions
+    # 基础断言
     assert len(result_rule[0].text) > 0
     assert len(result_llm[0].text) > 0
     assert result_rule[0].metadata['refined_by'] == 'rule'
@@ -307,12 +307,12 @@ def test_refinement_quality_comparison(sample_noisy_chunk):
 @pytest.mark.integration
 @pytest.mark.skipif(not is_provider_available('openai')[0], reason="OPENAI_API_KEY not set")
 def test_batch_refinement_performance(sample_noisy_chunk):
-    """Test refining multiple chunks in a batch."""
+    """测试批量精炼多个 chunk。"""
     settings = create_settings_for_provider('openai')
     refiner = ChunkRefiner(settings)
     trace = TraceContext()
-    
-    # Create 3 test chunks
+
+    # 创建 3 个测试 chunk
     chunks = [
         sample_noisy_chunk,
         Chunk(
@@ -327,16 +327,16 @@ def test_batch_refinement_performance(sample_noisy_chunk):
         )
     ]
     
-    # Refine all
+    # 精炼全部
     import time
     start_time = time.time()
     result = refiner.transform(chunks, trace=trace)
     elapsed_time = time.time() - start_time
-    
-    # Assertions
+
+    # 断言
     assert len(result) == 3
     assert all(r.metadata['refined_by'] == 'llm' for r in result)
-    
+
     # Trace
     stage_data = trace.get_stage_data('chunk_refiner')
     assert stage_data['data']['llm_enhanced_count'] == 3

@@ -1,4 +1,4 @@
-"""Tests for TraceService (G5)."""
+"""TraceService（G5）的测试。"""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ class TestTraceService:
         svc = TraceService(traces_file)
         result = svc.list_traces()
         assert len(result) == 3
-        # Newest first
+        # 最新的在前
         assert result[0]["trace_id"] == "t3"
 
     def test_list_by_type(self, traces_file):

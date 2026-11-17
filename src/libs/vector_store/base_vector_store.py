@@ -1,8 +1,7 @@
-"""Abstract base class for VectorStore providers.
+"""VectorStore provider 的抽象基类。
 
-This module defines the pluggable interface for VectorStore providers,
-enabling seamless switching between different backends (Chroma, Qdrant, Milvus, etc.)
-through configuration-driven instantiation.
+本模块定义了 VectorStore provider 的可插拔接口，通过配置驱动的实例化方式，
+可在不同的后端（Chroma、Qdrant、Milvus 等）之间无缝切换。
 """
 
 from __future__ import annotations
@@ -12,17 +11,16 @@ from typing import Any, Dict, List, Optional
 
 
 class BaseVectorStore(ABC):
-    """Abstract base class for VectorStore providers.
-    
-    All VectorStore implementations must inherit from this class and implement
-    the upsert() and query() methods. This ensures consistent interface across
-    different providers (Chroma, Qdrant, Milvus, etc.).
-    
-    Design Principles Applied:
-    - Pluggable: Subclasses can be swapped without changing upstream code.
-    - Observable: Accepts optional TraceContext for observability integration.
-    - Config-Driven: Instances are created via factory based on settings.
-    - Idempotent: upsert() operations should be safely repeatable.
+    """VectorStore provider 的抽象基类。
+
+    所有 VectorStore 实现都必须继承此类并实现 upsert() 与 query() 方法。
+    这可确保不同 provider（Chroma、Qdrant、Milvus 等）之间拥有一致的接口。
+
+    应用的设计原则：
+    - 可插拔：子类可在不修改上游代码的情况下替换。
+    - 可观测：接受可选的 TraceContext 以集成可观测性。
+    - 配置驱动：实例通过工厂基于配置创建。
+    - 幂等：upsert() 操作应可安全重复执行。
     """
     
     @abstractmethod
@@ -32,21 +30,21 @@ class BaseVectorStore(ABC):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
-        """Insert or update records in the vector store.
-        
-        Args:
-            records: List of records to upsert. Each record is a dict with:
-                - 'id': Unique identifier (str)
-                - 'vector': Embedding vector (List[float])
-                - 'metadata': Optional metadata dict (source, chunk_index, etc.)
-            trace: Optional TraceContext for observability (reserved for Stage F).
-            **kwargs: Provider-specific parameters.
-        
-        Raises:
-            ValueError: If records list is empty or contains invalid entries.
-            RuntimeError: If the vector store operation fails.
-        
-        Example:
+        """在 Vector Store 中插入或更新记录。
+
+        参数:
+            records: 待 upsert 的记录列表。每条记录是一个 dict，包含：
+                - 'id'：唯一标识符（str）
+                - 'vector'：Embedding 向量（List[float]）
+                - 'metadata'：可选的元数据 dict（source、chunk_index 等）
+            trace: 可选的 TraceContext，用于可观测性（预留给阶段 F）。
+            **kwargs: provider 特定参数。
+
+        异常:
+            ValueError: 当记录列表为空或包含无效项时。
+            RuntimeError: 当 Vector Store 操作失败时。
+
+        示例:
             >>> records = [
             ...     {
             ...         'id': 'doc1_chunk0',
@@ -55,11 +53,11 @@ class BaseVectorStore(ABC):
             ...     }
             ... ]
             >>> vector_store.upsert(records)
-        
-        Notes:
-            - This operation should be idempotent: upserting the same record
-              multiple times should produce the same final state.
-            - Implementations should handle batch operations efficiently.
+
+        注意:
+            - 此操作应当幂等：多次 upsert 同一条记录
+              应产生相同的最终状态。
+            - 实现应高效地处理批量操作。
         """
         pass
     
@@ -72,28 +70,28 @@ class BaseVectorStore(ABC):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
-        """Query the vector store for similar vectors.
-        
-        Args:
-            vector: Query vector (embedding) to search for.
-            top_k: Maximum number of results to return.
-            filters: Optional metadata filters (e.g., {'source': 'doc1.pdf'}).
-            trace: Optional TraceContext for observability (reserved for Stage F).
-            **kwargs: Provider-specific parameters.
-        
-        Returns:
-            List of matching records, sorted by similarity (descending).
-            Each record is a dict with:
-                - 'id': Record identifier
-                - 'score': Similarity score (higher = more similar)
-                - 'metadata': Associated metadata
-                - 'vector': Optional, the stored vector (provider-dependent)
-        
-        Raises:
-            ValueError: If vector is empty or top_k is invalid.
-            RuntimeError: If the vector store query fails.
-        
-        Example:
+        """在 Vector Store 中查询相似的向量。
+
+        参数:
+            vector: 待检索的查询向量（Embedding）。
+            top_k: 返回结果的最大数量。
+            filters: 可选的元数据过滤条件（如 {'source': 'doc1.pdf'}）。
+            trace: 可选的 TraceContext，用于可观测性（预留给阶段 F）。
+            **kwargs: provider 特定参数。
+
+        返回:
+            匹配的记录列表，按相似度降序排列。
+            每条记录是一个 dict，包含：
+                - 'id'：记录标识符
+                - 'score'：相似度分数（越高越相似）
+                - 'metadata'：关联的元数据
+                - 'vector'：可选，存储的向量（取决于 provider）
+
+        异常:
+            ValueError: 当向量为空或 top_k 无效时。
+            RuntimeError: 当 Vector Store 查询失败时。
+
+        示例:
             >>> query_vector = [0.1, 0.2, ..., 0.5]
             >>> results = vector_store.query(query_vector, top_k=5)
             >>> for result in results:
@@ -102,30 +100,30 @@ class BaseVectorStore(ABC):
         pass
     
     def validate_records(self, records: List[Dict[str, Any]]) -> None:
-        """Validate records before upsert.
-        
-        Args:
-            records: List of records to validate.
-        
-        Raises:
-            ValueError: If records list is empty or contains invalid entries.
+        """在 upsert 前校验记录。
+
+        参数:
+            records: 待校验的记录列表。
+
+        异常:
+            ValueError: 当记录列表为空或包含无效项时。
         """
         if not records:
             raise ValueError("Records list cannot be empty")
-        
+
         for i, record in enumerate(records):
             if not isinstance(record, dict):
                 raise ValueError(
                     f"Record at index {i} is not a dict (type: {type(record).__name__})"
                 )
-            
-            # Validate required fields
+
+            # 校验必需字段
             if 'id' not in record:
                 raise ValueError(f"Record at index {i} is missing required field: 'id'")
             if 'vector' not in record:
                 raise ValueError(f"Record at index {i} is missing required field: 'vector'")
-            
-            # Validate vector format
+
+            # 校验向量格式
             vector = record['vector']
             if not isinstance(vector, (list, tuple)):
                 raise ValueError(
@@ -137,14 +135,14 @@ class BaseVectorStore(ABC):
                 raise ValueError(f"Record at index {i} has empty vector")
     
     def validate_query_vector(self, vector: List[float], top_k: int) -> None:
-        """Validate query parameters.
-        
-        Args:
-            vector: Query vector to validate.
-            top_k: Number of results to validate.
-        
-        Raises:
-            ValueError: If parameters are invalid.
+        """校验查询参数。
+
+        参数:
+            vector: 待校验的查询向量。
+            top_k: 待校验的结果数量。
+
+        异常:
+            ValueError: 当参数无效时。
         """
         if not isinstance(vector, (list, tuple)):
             raise ValueError(
@@ -163,21 +161,21 @@ class BaseVectorStore(ABC):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
-        """Delete records from the vector store by IDs.
-        
-        Args:
-            ids: List of record IDs to delete.
-            trace: Optional TraceContext for observability.
-            **kwargs: Provider-specific parameters.
-        
-        Raises:
-            ValueError: If ids list is empty.
-            RuntimeError: If the delete operation fails.
-            NotImplementedError: If the provider doesn't support deletion.
-        
-        Notes:
-            This is an optional operation. Providers that don't support
-            deletion should raise NotImplementedError with a clear message.
+        """按 ID 从 Vector Store 中删除记录。
+
+        参数:
+            ids: 待删除的记录 ID 列表。
+            trace: 可选的 TraceContext，用于可观测性。
+            **kwargs: provider 特定参数。
+
+        异常:
+            ValueError: 当 ids 列表为空时。
+            RuntimeError: 当删除操作失败时。
+            NotImplementedError: 当 provider 不支持删除时。
+
+        注意:
+            这是可选操作。不支持删除的 provider
+            应抛出带有明确消息的 NotImplementedError。
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} does not implement delete() method. "
@@ -190,19 +188,19 @@ class BaseVectorStore(ABC):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
-        """Clear all records from the vector store or a specific collection.
-        
-        Args:
-            collection_name: Optional collection name to clear. If None, clears default collection.
-            trace: Optional TraceContext for observability.
-            **kwargs: Provider-specific parameters.
-        
-        Raises:
-            RuntimeError: If the clear operation fails.
-            NotImplementedError: If the provider doesn't support clearing.
-        
-        Notes:
-            This is primarily for testing and development. Use with caution in production.
+        """清空 Vector Store 中的所有记录，或清空指定 collection。
+
+        参数:
+            collection_name: 可选的待清空 collection 名称。若为 None，则清空默认 collection。
+            trace: 可选的 TraceContext，用于可观测性。
+            **kwargs: provider 特定参数。
+
+        异常:
+            RuntimeError: 当清空操作失败时。
+            NotImplementedError: 当 provider 不支持清空时。
+
+        注意:
+            这主要用于测试与开发。生产环境请谨慎使用。
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} does not implement clear() method. "
@@ -215,39 +213,38 @@ class BaseVectorStore(ABC):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
-        """Retrieve records by their IDs.
-        
-        This method is used by SparseRetriever to fetch text and metadata
-        for chunks that were matched by BM25 search (which only returns IDs and scores).
-        
-        Args:
-            ids: List of record IDs to retrieve.
-            trace: Optional TraceContext for observability (reserved for Stage F).
-            **kwargs: Provider-specific parameters.
-        
-        Returns:
-            List of records in the same order as input ids.
-            Each record is a dict with:
-                - 'id': Record identifier
-                - 'text': The stored text content
-                - 'metadata': Associated metadata
-            If an ID is not found, an empty dict is returned for that position.
-        
-        Raises:
-            ValueError: If ids list is empty.
-            RuntimeError: If the retrieval operation fails.
-            NotImplementedError: If the provider doesn't support this operation.
-        
-        Example:
+        """按 ID 检索记录。
+
+        此方法由 SparseRetriever 使用，用于获取 BM25 检索匹配到的 Chunk
+        的文本与元数据（BM25 只返回 ID 与分数）。
+
+        参数:
+            ids: 待检索的记录 ID 列表。
+            trace: 可选的 TraceContext，用于可观测性（预留给阶段 F）。
+            **kwargs: provider 特定参数。
+
+        返回:
+            与输入 ids 顺序一致的记录列表。
+            每条记录是一个 dict，包含：
+                - 'id'：记录标识符
+                - 'text'：存储的文本内容
+                - 'metadata'：关联的元数据
+            若某个 ID 未找到，则对应位置返回空 dict。
+
+        异常:
+            ValueError: 当 ids 列表为空时。
+            RuntimeError: 当检索操作失败时。
+            NotImplementedError: 当 provider 不支持此操作时。
+
+        示例:
             >>> ids = ["chunk_001", "chunk_002", "chunk_003"]
             >>> records = vector_store.get_by_ids(ids)
             >>> for record in records:
             ...     print(f"ID: {record['id']}, Text: {record['text'][:50]}...")
-        
-        Notes:
-            This operation is essential for hybrid search where BM25 returns
-            chunk IDs that need to be enriched with text and metadata from
-            the vector store.
+
+        注意:
+            此操作对混合检索至关重要：BM25 返回的 Chunk ID
+            需要从 Vector Store 中补充文本与元数据。
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} does not implement get_by_ids() method. "

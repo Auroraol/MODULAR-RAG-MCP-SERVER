@@ -1,9 +1,9 @@
-"""Ingestion Manager page – upload files, trigger ingestion, delete documents.
+"""Ingestion Manager 页面 – 上传文件、触发摄入、删除文档。
 
-Layout:
-1. File uploader + collection selector
-2. Ingest button → progress bar (using on_progress callback)
-3. Document list with delete buttons
+布局：
+1. 文件上传器 + collection 选择器
+2. 摄入按钮 → 进度条（使用 on_progress 回调）
+3. 文档列表及删除按钮
 """
 
 from __future__ import annotations
@@ -22,14 +22,14 @@ def _run_ingestion(
     progress_bar: "st.delta_generator.DeltaGenerator",
     status_text: "st.delta_generator.DeltaGenerator",
 ) -> None:
-    """Save the uploaded file to a temp location and run the pipeline."""
+    """将上传的文件保存到临时位置并运行 Pipeline。"""
     from src.core.settings import load_settings
     from src.core.trace import TraceContext, TraceCollector
     from src.ingestion.pipeline import IngestionPipeline
 
     settings = load_settings()
 
-    # Write uploaded file to a temp location
+    # 将上传的文件写入临时位置
     suffix = Path(uploaded_file.name).suffix
     with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(uploaded_file.getbuffer())
@@ -45,7 +45,7 @@ def _run_ingestion(
     }
 
     def on_progress(stage: str, current: int, total: int) -> None:
-        frac = (current - 1) / total  # stage just started, show partial progress
+        frac = (current - 1) / total  # 阶段刚开始，显示部分进度
         label = _STAGE_LABELS.get(stage, stage)
         progress_bar.progress(frac, text=f"[{current}/{total}] {label}")
         status_text.caption(label)
@@ -68,7 +68,7 @@ def _run_ingestion(
         status_text.error(f"Ingestion failed: {exc}")
     finally:
         TraceCollector().collect(trace)
-        # Clean up temp file
+        # 清理临时文件
         try:
             Path(tmp_path).unlink(missing_ok=True)
         except Exception:
@@ -76,10 +76,10 @@ def _run_ingestion(
 
 
 def render() -> None:
-    """Render the Ingestion Manager page."""
+    """渲染 Ingestion Manager 页面。"""
     st.header("📥 Ingestion Manager")
 
-    # ── Upload section ─────────────────────────────────────────────
+    # ── 上传区域 ──────────────────────────────────────────────────
     st.subheader("📤 Upload & Ingest")
 
     col1, col2 = st.columns([3, 1])
@@ -100,7 +100,7 @@ def render() -> None:
 
     st.divider()
 
-    # ── Document management section ────────────────────────────────
+    # ── 文档管理区域 ──────────────────────────────────────────────
     st.subheader("🗑️ Manage Documents")
 
     try:

@@ -1,13 +1,13 @@
-"""Image storage with SQLite indexing for multimodal RAG.
+"""面向多模态 RAG 的、带 SQLite 索引的图像存储。
 
-This module provides persistent image storage with SQLite-backed indexing,
-enabling efficient image retrieval and management across collections.
+该模块提供持久化的图像存储，并以 SQLite 为后端建立索引，
+从而支持跨集合的高效图像检索与管理。
 
-Design Principles:
-- Persistent: Images stored on filesystem, metadata in SQLite
-- Concurrent: WAL mode enables concurrent read/write operations
-- Idempotent: Re-saving same image_id updates metadata safely
-- Organized: Images grouped by collection for namespace isolation
+设计原则：
+- 持久化：图像存储在文件系统，元数据存储在 SQLite
+- 并发：WAL 模式支持并发读写操作
+- 幂等：重复保存相同 image_id 会安全地更新元数据
+- 组织化：图像按集合分组，实现命名空间隔离
 """
 
 import sqlite3
@@ -18,15 +18,15 @@ from typing import Optional, List, Dict, Union
 
 
 class ImageStorage:
-    """SQLite-backed image storage manager.
-    
-    Stores image files in organized directory structure and maintains
-    a SQLite index for efficient lookup and querying.
-    
-    Directory Structure:
+    """基于 SQLite 的图像存储管理器。
+
+    将图像文件存储在组织化的目录结构中，并维护 SQLite 索引，
+    以实现高效查找和查询。
+
+    目录结构:
         data/images/{collection}/{image_id}.png
-    
-    Database Schema:
+
+    数据库 Schema:
         image_index (
             image_id TEXT PRIMARY KEY,
             file_path TEXT NOT NULL,
@@ -39,14 +39,14 @@ class ImageStorage:
         INDEX idx_collection ON image_index(collection)
         INDEX idx_doc_hash ON image_index(doc_hash)
     
-    Args:
-        db_path: Path to SQLite database file (default: data/db/image_index.db).
-        images_root: Root directory for image storage (default: data/images).
-    
-    Example:
+    参数:
+        db_path: SQLite 数据库文件路径（默认: data/db/image_index.db）。
+        images_root: 图像存储的根目录（默认: data/images）。
+
+    示例:
         >>> storage = ImageStorage()
-        >>> 
-        >>> # Save an image
+        >>>
+        >>> # 保存图像
         >>> with open("sample.png", "rb") as f:
         >>>     image_data = f.read()
         >>> path = storage.save_image(
@@ -57,12 +57,12 @@ class ImageStorage:
         ...     page_num=1
         ... )
         >>> print(path)  # data/images/contracts/doc123_p1_img0.png
-        >>> 
-        >>> # Retrieve image path
+        >>>
+        >>> # 获取图像路径
         >>> path = storage.get_image_path("doc123_p1_img0")
         >>> print(path)  # data/images/contracts/doc123_p1_img0.png
-        >>> 
-        >>> # List images in collection
+        >>>
+        >>> # 列出集合中的图像
         >>> images = storage.list_images("contracts")
         >>> print(len(images))  # 1
     """
@@ -72,11 +72,11 @@ class ImageStorage:
         db_path: str = "data/db/image_index.db",
         images_root: str = "data/images"
     ):
-        """Initialize image storage and create database if needed.
-        
-        Args:
-            db_path: Path to SQLite database file.
-            images_root: Root directory for storing image files.
+        """初始化图像存储，并在需要时创建数据库。
+
+        参数:
+            db_path: SQLite 数据库文件路径。
+            images_root: 用于存储图像文件的根目录。
         """
         self.db_path = db_path
         self.images_root = Path(images_root)
@@ -84,31 +84,31 @@ class ImageStorage:
         self._ensure_database()
     
     def close(self) -> None:
-        """Close database connection if open."""
+        """若数据库连接已打开则关闭。"""
         if self._conn:
             self._conn.close()
             self._conn = None
     
     def __del__(self):
-        """Cleanup: close connection on deletion."""
+        """清理：对象删除时关闭连接。"""
         self.close()
     
     def _ensure_database(self) -> None:
-        """Create database file and schema if they don't exist."""
-        # Create parent directories
+        """若数据库文件和 schema 不存在则创建。"""
+        # 创建父目录
         db_file = Path(self.db_path)
         db_file.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Create images root directory
+
+        # 创建图像根目录
         self.images_root.mkdir(parents=True, exist_ok=True)
-        
-        # Connect and initialize schema
+
+        # 连接并初始化 schema
         conn = sqlite3.connect(self.db_path)
         try:
-            # Enable WAL mode for concurrent access
+            # 启用 WAL 模式以支持并发访问
             conn.execute("PRAGMA journal_mode=WAL")
-            
-            # Create table if not exists
+
+            # 若表不存在则创建
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS image_index (
                     image_id TEXT PRIMARY KEY,
@@ -120,7 +120,7 @@ class ImageStorage:
                 )
             """)
             
-            # Create indexes for efficient queries
+            # 创建索引以支持高效查询
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_collection 
                 ON image_index(collection)
@@ -144,56 +144,56 @@ class ImageStorage:
         page_num: Optional[int] = None,
         extension: str = "png"
     ) -> str:
-        """Save image to filesystem and register in database.
-        
-        This operation is idempotent - re-saving with same image_id
-        will update the metadata and overwrite the file.
-        
-        Args:
-            image_id: Unique identifier for the image.
-            image_data: Image data as bytes, or path to source image file.
-            collection: Optional collection/namespace for organization.
-            doc_hash: Optional document hash for traceability.
-            page_num: Optional page number if from paginated document.
-            extension: File extension without dot (default: "png").
-        
-        Returns:
-            Relative path where image was saved.
-            
-        Raises:
-            ValueError: If image_id is empty or invalid.
-            IOError: If image file cannot be saved.
-            RuntimeError: If database operation fails.
-            
-        Example:
-            >>> # Save from bytes
+        """将图像保存到文件系统并注册到数据库。
+
+        该操作是幂等的——使用相同 image_id 重复保存会更新元数据
+        并覆盖文件。
+
+        参数:
+            image_id: 图像的唯一标识符。
+            image_data: 图像数据（bytes），或源图像文件的路径。
+            collection: 可选的集合/命名空间，用于组织图像。
+            doc_hash: 可选的文档哈希，用于溯源。
+            page_num: 可选的页码（若来自分页文档）。
+            extension: 不带点号的文件扩展名（默认: "png"）。
+
+        返回:
+            图像保存的相对路径。
+
+        异常:
+            ValueError: 当 image_id 为空或无效时。
+            IOError: 当图像文件无法保存时。
+            RuntimeError: 当数据库操作失败时。
+
+        示例:
+            >>> # 从 bytes 保存
             >>> path = storage.save_image("img1", b"PNG_DATA", "docs")
-            >>> 
-            >>> # Save from file
+            >>>
+            >>> # 从文件保存
             >>> path = storage.save_image("img2", Path("source.png"), "docs")
         """
         if not image_id or not image_id.strip():
             raise ValueError("image_id cannot be empty")
         
-        # Determine collection directory
+        # 确定集合目录
         if collection:
             collection_dir = self.images_root / collection
         else:
             collection_dir = self.images_root / "default"
-        
+
         collection_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Build image file path
+
+        # 构建图像文件路径
         image_filename = f"{image_id}.{extension}"
         image_path = collection_dir / image_filename
-        
-        # Save image file
+
+        # 保存图像文件
         try:
             if isinstance(image_data, bytes):
-                # Write bytes directly
+                # 直接写入 bytes
                 image_path.write_bytes(image_data)
             elif isinstance(image_data, (Path, str)):
-                # Copy from source file
+                # 从源文件复制
                 source_path = Path(image_data)
                 if not source_path.exists():
                     raise FileNotFoundError(f"Source image not found: {source_path}")
@@ -202,17 +202,17 @@ class ImageStorage:
                 raise ValueError(f"Unsupported image_data type: {type(image_data)}")
         except Exception as e:
             raise IOError(f"Failed to save image {image_id}: {e}")
-        
-        # Store absolute path for reliable retrieval
-        # (relative paths would fail with temp directories in tests)
+
+        # 存储绝对路径以保证可靠检索
+        # （在测试环境中相对路径会因临时目录而失效）
         stored_path = str(image_path.resolve())
-        
-        # Register in database
+
+        # 注册到数据库
         now = datetime.now(timezone.utc).isoformat()
-        
+
         conn = sqlite3.connect(self.db_path)
         try:
-            # Use INSERT OR REPLACE for idempotent operation
+            # 使用 INSERT OR REPLACE 实现幂等操作
             conn.execute("""
                 INSERT OR REPLACE INTO image_index 
                 (image_id, file_path, collection, doc_hash, page_num, created_at)
@@ -235,30 +235,30 @@ class ImageStorage:
         doc_hash: Optional[str] = None,
         page_num: Optional[int] = None
     ) -> str:
-        """Register an existing image file in the database index.
-        
-        Unlike save_image(), this method does NOT copy or move the file.
-        It only creates a database entry pointing to the existing file.
-        Use this when the image has already been saved by another component
-        (e.g., PdfLoader) and you just need to index it.
-        
-        Args:
-            image_id: Unique identifier for the image.
-            file_path: Path to the existing image file.
-            collection: Optional collection/namespace for organization.
-            doc_hash: Optional document hash for traceability.
-            page_num: Optional page number if from paginated document.
-        
-        Returns:
-            Absolute path to the registered image.
-            
-        Raises:
-            ValueError: If image_id is empty or invalid.
-            FileNotFoundError: If the image file does not exist.
-            RuntimeError: If database operation fails.
-            
-        Example:
-            >>> # Register an image that was saved by PdfLoader
+        """在数据库索引中注册一个已存在的图像文件。
+
+        与 save_image() 不同，该方法不会复制或移动文件，
+        仅创建一条指向现有文件的数据库记录。
+        当图像已由其他组件（例如 PdfLoader）保存，而只需为其
+        建立索引时，请使用此方法。
+
+        参数:
+            image_id: 图像的唯一标识符。
+            file_path: 现有图像文件的路径。
+            collection: 可选的集合/命名空间，用于组织图像。
+            doc_hash: 可选的文档哈希，用于溯源。
+            page_num: 可选的页码（若来自分页文档）。
+
+        返回:
+            已注册图像的绝对路径。
+
+        异常:
+            ValueError: 当 image_id 为空或无效时。
+            FileNotFoundError: 当图像文件不存在时。
+            RuntimeError: 当数据库操作失败时。
+
+        示例:
+            >>> # 注册由 PdfLoader 保存的图像
             >>> path = storage.register_image(
             ...     image_id="doc123_p1_img0",
             ...     file_path="data/images/tech_docs/abc123/doc123_p1_img0.png",
@@ -270,20 +270,20 @@ class ImageStorage:
         if not image_id or not image_id.strip():
             raise ValueError("image_id cannot be empty")
         
-        # Verify file exists
+        # 校验文件是否存在
         path = Path(file_path)
         if not path.exists():
             raise FileNotFoundError(f"Image file not found: {file_path}")
-        
-        # Store absolute path for reliable retrieval
+
+        # 存储绝对路径以保证可靠检索
         stored_path = str(path.resolve())
-        
-        # Register in database
+
+        # 注册到数据库
         now = datetime.now(timezone.utc).isoformat()
-        
+
         conn = sqlite3.connect(self.db_path)
         try:
-            # Use INSERT OR REPLACE for idempotent operation
+            # 使用 INSERT OR REPLACE 实现幂等操作
             conn.execute("""
                 INSERT OR REPLACE INTO image_index 
                 (image_id, file_path, collection, doc_hash, page_num, created_at)
@@ -299,15 +299,15 @@ class ImageStorage:
         return stored_path
     
     def get_image_path(self, image_id: str) -> Optional[str]:
-        """Get filesystem path for an image by ID.
-        
-        Args:
-            image_id: Unique identifier for the image.
-            
-        Returns:
-            Relative file path if image exists, None otherwise.
-            
-        Example:
+        """根据 ID 获取图像的文件系统路径。
+
+        参数:
+            image_id: 图像的唯一标识符。
+
+        返回:
+            若图像存在则返回相对文件路径，否则返回 None。
+
+        示例:
             >>> path = storage.get_image_path("img1")
             >>> if path:
             ...     with open(path, "rb") as f:
@@ -325,13 +325,13 @@ class ImageStorage:
             conn.close()
     
     def image_exists(self, image_id: str) -> bool:
-        """Check if image exists in database.
-        
-        Args:
-            image_id: Unique identifier for the image.
-            
-        Returns:
-            True if image is registered, False otherwise.
+        """检查图像是否存在于数据库中。
+
+        参数:
+            image_id: 图像的唯一标识符。
+
+        返回:
+            若图像已注册则返回 True，否则返回 False。
         """
         return self.get_image_path(image_id) is not None
     
@@ -340,80 +340,80 @@ class ImageStorage:
         collection: Optional[str] = None,
         doc_hash: Optional[str] = None
     ) -> List[Dict[str, any]]:
-        """List images with optional filtering.
-        
-        Args:
-            collection: Optional collection filter.
-            doc_hash: Optional document hash filter.
-            
-        Returns:
-            List of image metadata dictionaries with keys:
-            - image_id: Image identifier
-            - file_path: Filesystem path
-            - collection: Collection name
-            - doc_hash: Document hash
-            - page_num: Page number (if applicable)
-            - created_at: Creation timestamp
-            
-        Example:
-            >>> # List all images in a collection
+        """列出图像，支持可选过滤。
+
+        参数:
+            collection: 可选的集合过滤条件。
+            doc_hash: 可选的文档哈希过滤条件。
+
+        返回:
+            图像元数据字典列表，包含以下键：
+            - image_id: 图像标识符
+            - file_path: 文件系统路径
+            - collection: 集合名称
+            - doc_hash: 文档哈希
+            - page_num: 页码（如适用）
+            - created_at: 创建时间戳
+
+        示例:
+            >>> # 列出集合中的所有图像
             >>> images = storage.list_images(collection="contracts")
             >>> for img in images:
             ...     print(img["image_id"], img["file_path"])
-            
-            >>> # List images from a specific document
+
+            >>> # 列出特定文档的图像
             >>> images = storage.list_images(doc_hash="abc123")
         """
         conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # Enable dict-like access
-        
+        conn.row_factory = sqlite3.Row  # 启用类似字典的访问方式
+
         try:
-            # Build query with optional filters
+            # 构建带可选过滤条件的查询
             query = "SELECT * FROM image_index WHERE 1=1"
             params = []
-            
+
             if collection is not None:
                 query += " AND collection = ?"
                 params.append(collection)
-            
+
             if doc_hash is not None:
                 query += " AND doc_hash = ?"
                 params.append(doc_hash)
-            
+
             query += " ORDER BY created_at ASC"
-            
+
             cursor = conn.execute(query, params)
             rows = cursor.fetchall()
-            
-            # Convert rows to dictionaries
+
+            # 将行转换为字典
             return [dict(row) for row in rows]
         finally:
             conn.close()
     
     def delete_image(self, image_id: str, remove_file: bool = True) -> bool:
-        """Delete image from database and optionally from filesystem.
-        
-        Args:
-            image_id: Unique identifier for the image.
-            remove_file: If True, also delete the image file (default: True).
-            
-        Returns:
-            True if image was deleted, False if not found.
-            
-        Example:
-            >>> # Delete image and file
+        """从数据库删除图像，并可选择同时从文件系统删除。
+
+        参数:
+            image_id: 图像的唯一标识符。
+            remove_file: 若为 True，同时删除图像文件（默认: True）。
+
+        返回:
+            若图像被删除返回 True，未找到返回 False。
+
+        示例:
+            >>> # 删除图像及文件
             >>> deleted = storage.delete_image("img1")
-            >>> 
-            >>> # Remove from database only, keep file
+            >>>
+            >>> # 仅从数据库移除，保留文件
             >>> deleted = storage.delete_image("img2", remove_file=False)
         """
-        # Get file path before deleting from database
+        # 在从数据库删除之前先获取文件路径
         file_path = self.get_image_path(image_id)
-        
+
         if file_path is None:
             return False
-        
-        # Delete from database
+
+        # 从数据库删除
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.execute(
@@ -426,29 +426,29 @@ class ImageStorage:
             return False
         finally:
             conn.close()
-        
-        # Optionally delete file
+
+        # 可选地删除文件
         if remove_file and deleted:
             try:
                 Path(file_path).unlink(missing_ok=True)
             except Exception:
-                # Log but don't fail if file deletion fails
+                # 记录日志，但文件删除失败时不抛出异常
                 pass
         
         return deleted
     
     def get_collection_stats(self, collection: str) -> Dict[str, any]:
-        """Get statistics for a collection.
-        
-        Args:
-            collection: Collection name.
-            
-        Returns:
-            Dictionary with statistics:
-            - total_images: Number of images in collection
-            - total_size_bytes: Total file size (if files exist)
-            
-        Example:
+        """获取集合的统计信息。
+
+        参数:
+            collection: 集合名称。
+
+        返回:
+            包含统计信息的字典：
+            - total_images: 集合中的图像数量
+            - total_size_bytes: 文件总大小（若文件存在）
+
+        示例:
             >>> stats = storage.get_collection_stats("contracts")
             >>> print(f"Total images: {stats['total_images']}")
         """

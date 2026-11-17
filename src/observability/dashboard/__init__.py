@@ -1,7 +1,7 @@
 """
-Dashboard Module.
+Dashboard 模块。
 
-This package contains the Streamlit dashboard application.
+本包包含 Streamlit Dashboard 应用。
 """
 
 __all__ = []

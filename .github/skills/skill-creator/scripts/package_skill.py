@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Skill Packager - Creates a distributable .skill file of a skill folder
+Skill Packager - 将 skill 目录打包为可分发的 .skill 文件
 
-Usage:
+用法:
     python package_skill.py <path/to/skill-folder> [output-directory]
 
-Example:
+示例:
     python package_skill.py .github/skills/my-skill
     python package_skill.py .github/skills/my-skill ./dist
 """
@@ -14,25 +14,25 @@ import sys
 import zipfile
 from pathlib import Path
 
-# Ensure sibling modules can be imported when run from any working directory
+# 确保在任意工作目录下运行时都能导入同级模块
 sys.path.insert(0, str(Path(__file__).parent))
 from quick_validate import validate_skill
 
 
 def package_skill(skill_path, output_dir=None):
     """
-    Package a skill folder into a .skill file.
+    将 skill 目录打包为 .skill 文件。
 
-    Args:
-        skill_path: Path to the skill folder
-        output_dir: Optional output directory for the .skill file (defaults to current directory)
+    参数:
+        skill_path: skill 目录的路径
+        output_dir: .skill 文件的可选输出目录（默认为当前目录）
 
-    Returns:
-        Path to the created .skill file, or None if error
+    返回:
+        已创建的 .skill 文件路径；若出错则返回 None
     """
     skill_path = Path(skill_path).resolve()
 
-    # Validate skill folder exists
+    # 校验 skill 目录是否存在
     if not skill_path.exists():
         print(f"❌ Error: Skill folder not found: {skill_path}")
         return None
@@ -41,13 +41,13 @@ def package_skill(skill_path, output_dir=None):
         print(f"❌ Error: Path is not a directory: {skill_path}")
         return None
 
-    # Validate SKILL.md exists
+    # 校验 SKILL.md 是否存在
     skill_md = skill_path / "SKILL.md"
     if not skill_md.exists():
         print(f"❌ Error: SKILL.md not found in {skill_path}")
         return None
 
-    # Run validation before packaging
+    # 打包前先校验
     print("🔍 Validating skill...")
     valid, message = validate_skill(skill_path)
     if not valid:
@@ -56,7 +56,7 @@ def package_skill(skill_path, output_dir=None):
         return None
     print(f"✅ {message}\n")
 
-    # Determine output location
+    # 确定输出位置
     skill_name = skill_path.name
     if output_dir:
         output_path = Path(output_dir).resolve()
@@ -66,13 +66,13 @@ def package_skill(skill_path, output_dir=None):
 
     skill_filename = output_path / f"{skill_name}.skill"
 
-    # Create the .skill file (zip format)
+    # 创建 .skill 文件（zip 格式）
     try:
         with zipfile.ZipFile(skill_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Walk through the skill directory
+            # 遍历 skill 目录
             for file_path in skill_path.rglob('*'):
                 if file_path.is_file():
-                    # Calculate the relative path within the zip
+                    # 计算文件在 zip 内的相对路径
                     arcname = file_path.relative_to(skill_path.parent)
                     zipf.write(file_path, arcname)
                     print(f"  Added: {arcname}")

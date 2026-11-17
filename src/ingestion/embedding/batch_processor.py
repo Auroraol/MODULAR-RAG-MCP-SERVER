@@ -1,14 +1,14 @@
-"""Batch Processor for orchestrating dense and sparse encoding.
+"""批处理器，用于编排稠密与稀疏编码。
 
-This module implements the Batch Processor component of the Ingestion Pipeline,
-responsible for coordinating the encoding workflow and managing batch operations.
+本模块实现 Ingestion Pipeline 的批处理器组件，负责协调
+编码工作流并管理批处理操作。
 
-Design Principles:
-- Orchestration: Coordinates DenseEncoder and SparseEncoder in unified workflow
-- Config-Driven: Batch size from settings, not hardcoded
-- Observable: Records batch timing and statistics via TraceContext
-- Error Handling: Individual batch failures don't crash entire pipeline
-- Deterministic: Same inputs produce same batching and results
+设计原则：
+- 编排：在统一工作流中协调 DenseEncoder 与 SparseEncoder
+- 配置驱动：批大小来自配置，而非硬编码
+- 可观测：通过 TraceContext 记录批次耗时与统计信息
+- 错误处理：单个批次失败不会导致整个 Pipeline 崩溃
+- 确定性：相同输入产生相同的分批方式和结果
 """
 
 from typing import List, Dict, Any, Optional, Tuple
@@ -22,15 +22,15 @@ from src.ingestion.embedding.sparse_encoder import SparseEncoder
 
 @dataclass
 class BatchResult:
-    """Result of batch processing operation.
-    
-    Attributes:
-        dense_vectors: List of dense embeddings (one per chunk)
-        sparse_stats: List of term statistics (one per chunk)
-        batch_count: Number of batches processed
-        total_time: Total processing time in seconds
-        successful_chunks: Number of successfully processed chunks
-        failed_chunks: Number of chunks that failed processing
+    """批处理操作的结果。
+
+    属性:
+        dense_vectors: 稠密 Embedding 列表（每个 Chunk 一个）
+        sparse_stats: 词项统计列表（每个 Chunk 一个）
+        batch_count: 已处理的批次数
+        total_time: 总处理时间（秒）
+        successful_chunks: 成功处理的 Chunk 数量
+        failed_chunks: 处理失败的 Chunk 数量
     """
     dense_vectors: List[List[float]]
     sparse_stats: List[Dict[str, Any]]
@@ -41,19 +41,18 @@ class BatchResult:
 
 
 class BatchProcessor:
-    """Orchestrates batch processing of chunks through encoding pipeline.
-    
-    This processor manages the workflow of converting chunks into both dense
-    and sparse representations. It divides chunks into batches, drives the
-    encoders, and collects timing metrics.
-    
-    Design:
-    - Stateless: No state maintained between process() calls
-    - Parallel Encodings: Dense and sparse encoding happen independently
-    - Metrics Collection: Records batch-level timing for observability
-    - Order Preservation: Output order matches input chunk order
-    
-    Example:
+    """编排 Chunk 通过编码 Pipeline 的批处理。
+
+    该处理器管理将 Chunk 转换为稠密和稀疏两种表示的流程。
+    它将 Chunk 划分为批次，驱动编码器，并收集耗时指标。
+
+    设计：
+    - 无状态：process() 调用之间不保留状态
+    - 并行编码：稠密与稀疏编码相互独立
+    - 指标收集：记录批次级耗时以支持可观测性
+    - 顺序保持：输出顺序与输入 Chunk 顺序一致
+
+    示例:
         >>> from src.libs.embedding.embedding_factory import EmbeddingFactory
         >>> from src.core.settings import load_settings
         >>> 
@@ -83,15 +82,15 @@ class BatchProcessor:
         sparse_encoder: SparseEncoder,
         batch_size: int = 100,
     ):
-        """Initialize BatchProcessor.
-        
-        Args:
-            dense_encoder: DenseEncoder instance for embedding generation
-            sparse_encoder: SparseEncoder instance for term statistics
-            batch_size: Number of chunks to process per batch (default: 100)
-        
-        Raises:
-            ValueError: If batch_size <= 0
+        """初始化 BatchProcessor。
+
+        参数:
+            dense_encoder: 用于生成 Embedding 的 DenseEncoder 实例
+            sparse_encoder: 用于词项统计的 SparseEncoder 实例
+            batch_size: 每批处理的 Chunk 数量（默认：100）
+
+        异常:
+            ValueError: 若 batch_size <= 0
         """
         if batch_size <= 0:
             raise ValueError(f"batch_size must be positive, got {batch_size}")
@@ -105,27 +104,27 @@ class BatchProcessor:
         chunks: List[Chunk],
         trace: Optional[Any] = None,
     ) -> BatchResult:
-        """Process chunks through dense and sparse encoding pipeline.
-        
-        Workflow:
-        1. Validate inputs
-        2. Create batches from chunks
-        3. Process each batch through both encoders
-        4. Collect results and timing metrics
-        5. Record to TraceContext if provided
-        
-        Args:
-            chunks: List of Chunk objects to process
-            trace: Optional TraceContext for observability
-        
-        Returns:
-            BatchResult containing vectors, statistics, and metrics
-        
-        Raises:
-            ValueError: If chunks list is empty
-            RuntimeError: If both encoders fail completely
-        
-        Example:
+        """通过稠密与稀疏编码 Pipeline 处理 Chunk。
+
+        工作流：
+        1. 校验输入
+        2. 将 Chunk 划分为批次
+        3. 通过两个编码器处理每个批次
+        4. 收集结果与耗时指标
+        5. 若提供 TraceContext 则记录
+
+        参数:
+            chunks: 待处理的 Chunk 对象列表
+            trace: 可选的 TraceContext，用于可观测性
+
+        返回:
+            包含向量、统计信息与指标的 BatchResult
+
+        异常:
+            ValueError: 若 chunks 列表为空
+            RuntimeError: 若两个编码器都完全失败
+
+        示例:
             >>> chunks = [Chunk(id=f"{i}", text=f"Text {i}", metadata={}) 
             ...           for i in range(5)]
             >>> result = processor.process(chunks)
@@ -137,11 +136,11 @@ class BatchProcessor:
         
         start_time = time.time()
         
-        # Create batches
+        # 创建批次
         batches = self._create_batches(chunks)
         batch_count = len(batches)
-        
-        # Process all batches
+
+        # 处理所有批次
         dense_vectors: List[List[float]] = []
         sparse_stats: List[Dict[str, Any]] = []
         successful_chunks = 0
@@ -151,18 +150,18 @@ class BatchProcessor:
             batch_start = time.time()
             
             try:
-                # Dense encoding
+                # 稠密编码
                 batch_dense = self.dense_encoder.encode(batch, trace=trace)
                 dense_vectors.extend(batch_dense)
-                
-                # Sparse encoding
+
+                # 稀疏编码
                 batch_sparse = self.sparse_encoder.encode(batch, trace=trace)
                 sparse_stats.extend(batch_sparse)
                 
                 successful_chunks += len(batch)
                 
             except Exception as e:
-                # Record failure but continue with remaining batches
+                # 记录失败，但继续处理剩余批次
                 failed_chunks += len(batch)
                 if trace:
                     trace.record_stage(
@@ -172,7 +171,7 @@ class BatchProcessor:
             
             batch_duration = time.time() - batch_start
             
-            # Record batch timing if trace available
+            # 若有 trace 则记录批次耗时
             if trace:
                 trace.record_stage(
                     f"batch_{batch_idx}",
@@ -185,7 +184,7 @@ class BatchProcessor:
         
         total_time = time.time() - start_time
         
-        # Record overall processing statistics
+        # 记录整体处理统计信息
         if trace:
             trace.record_stage(
                 "batch_processing",
@@ -209,17 +208,17 @@ class BatchProcessor:
         )
     
     def _create_batches(self, chunks: List[Chunk]) -> List[List[Chunk]]:
-        """Divide chunks into batches of specified size.
-        
-        Args:
-            chunks: List of chunks to batch
-        
-        Returns:
-            List of batches, where each batch is a list of chunks.
-            Order is preserved: first batch contains chunks[0:batch_size],
-            second batch contains chunks[batch_size:2*batch_size], etc.
-        
-        Example:
+        """将 Chunk 按指定大小划分为批次。
+
+        参数:
+            chunks: 待分批的 Chunk 列表
+
+        返回:
+            批次列表，每个批次是 Chunk 列表。
+            顺序保持不变：第一批包含 chunks[0:batch_size]，
+            第二批包含 chunks[batch_size:2*batch_size]，依此类推。
+
+        示例:
             >>> chunks = [Chunk(id=f"{i}", text="", metadata={}) for i in range(5)]
             >>> batches = processor._create_batches(chunks)
             >>> len(batches)  # 3 (with batch_size=2)
@@ -232,17 +231,17 @@ class BatchProcessor:
         return batches
     
     def get_batch_count(self, total_chunks: int) -> int:
-        """Calculate number of batches for given chunk count.
-        
-        Utility method for planning and testing.
-        
-        Args:
-            total_chunks: Total number of chunks to process
-        
-        Returns:
-            Number of batches that will be created
-        
-        Example:
+        """计算给定 Chunk 数量所需的批次数。
+
+        用于规划和测试的工具方法。
+
+        参数:
+            total_chunks: 待处理的 Chunk 总数
+
+        返回:
+            将创建的批次数
+
+        示例:
             >>> processor.get_batch_count(5)  # 3 (with batch_size=2)
             >>> processor.get_batch_count(4)  # 2
             >>> processor.get_batch_count(0)  # 0

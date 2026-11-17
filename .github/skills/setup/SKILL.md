@@ -1,41 +1,41 @@
 ---
 name: setup
-description: "Interactive project setup wizard. From a clean codebase, guides user through provider selection (OpenAI/Azure/DeepSeek/Ollama/Qwen/Gemini/etc.), API key configuration, dependency installation, config generation, and launches the dashboard. If user selects an unimplemented provider, auto-scaffolds the provider code following the plugin architecture. Auto-diagnoses and fixes startup failures with up to 3 retry rounds. Use when user says 'setup', 'set up', 'configure', 'init project', '初始化', '环境配置', '项目配置', 'first run', 'get started', 'quick start', or wants to configure and launch the project from scratch."
+description: "交互式项目初始化向导。从干净的代码库开始，引导用户完成 provider 选择（OpenAI/Azure/DeepSeek/Ollama/Qwen/Gemini 等）、API Key 配置、依赖安装、配置生成，并启动 Dashboard。若用户选择了尚未实现的 provider，则按插件架构自动脚手架生成 provider 代码。自动诊断并修复启动失败，最多 3 轮重试。当用户说 'setup'、'set up'、'configure'、'init project'、'初始化'、'环境配置'、'项目配置'、'first run'、'get started'、'quick start'，或希望从零配置并启动项目时使用。"
 ---
 
-# Setup
+# Setup — 项目初始化
 
-Interactive wizard: configure providers → install deps → generate config → launch dashboard → auto-fix issues.
+交互式向导：配置 provider → 安装依赖 → 生成配置 → 启动 dashboard → 自动修复问题。
 
 ---
 
-## Pipeline
+## 流程
 
 ```
 Preflight → Ask User → Generate Config → Install Deps → Validate → Launch → Usage Guide
 ```
 
-> Auto-fix loop: if any step fails, diagnose → fix → retry (≤3 rounds).
+> 自动修复循环：任一步骤失败时，诊断 → 修复 → 重试（≤3 轮）。
 
 ---
 
-## Step 1: Preflight Checks
+## 步骤 1：预检
 
-Verify prerequisites before asking the user anything:
+在向用户提出任何问题之前，先验证前置条件：
 
-### 1.1 Check Python Version
+### 1.1 检查 Python 版本
 
 ```powershell
 python --version          # Require >=3.10
 ```
 
-If Python < 3.10, stop and inform user to install a supported version.
+如果 Python < 3.10，停止并告知用户安装受支持的版本。
 
-### 1.2 Check & Create Virtual Environment
+### 1.2 检查并创建虚拟环境
 
-Check if `.venv` directory already exists. If it does, skip creation and just activate it. If it does NOT exist, create it and activate it.
+检查 `.venv` 目录是否已存在。若已存在，跳过创建，直接激活即可。若不存在，则创建并激活它。
 
-**Important:** Use `--without-pip` to avoid the slow `ensurepip` step that can hang on Windows, then bootstrap pip manually with `ensurepip` after activation.
+**重要：** 使用 `--without-pip` 避开在 Windows 上可能卡住的缓慢 `ensurepip` 步骤，然后在激活后使用 `ensurepip` 手动引导 pip。
 
 ```powershell
 # Step 1: Check if .venv exists
@@ -57,93 +57,93 @@ python -m ensurepip --upgrade
 pip --version             # Should show pip path inside .venv
 ```
 
-If `.venv` already exists, only run Step 3 (activate) and Step 5 (verify).
+如果 `.venv` 已存在，只需运行步骤 3（激活）和步骤 5（验证）。
 
 ---
 
-## Step 2: Ask User for Configuration
+## 步骤 2：询问用户配置
 
-Use the `ask_questions` tool to gather provider choices. Ask in batches (max 4 questions per call).
+使用 `ask_questions` 工具收集 provider 选择。分批提问（每次调用最多 4 个问题）。
 
-### Batch 1: Core Providers
+### 批次 1：核心 Provider
 
-Ask these questions together:
+一次性提出以下问题：
 
-1. **LLM Provider** — Which LLM provider?
-   - Options: `OpenAI`, `Azure OpenAI`, `DeepSeek`, `Ollama (local)`, `Qwen (Alibaba Cloud)`, `Gemini (Google)`
-   - Recommended: `OpenAI`
-   - Built-in: OpenAI, Azure, DeepSeek, Ollama. Others require auto-scaffolding (see Step 2.5).
+1. **LLM Provider** — 使用哪个 LLM provider？
+   - 选项：`OpenAI`、`Azure OpenAI`、`DeepSeek`、`Ollama (local)`、`Qwen (Alibaba Cloud)`、`Gemini (Google)`
+   - 推荐：`OpenAI`
+   - 内置支持：OpenAI、Azure、DeepSeek、Ollama。其他 provider 需要自动脚手架（见步骤 2.5）。
 
-2. **Embedding Provider** — Which embedding provider?
-   - Options: `OpenAI`, `Azure OpenAI`, `Ollama (local)`, `Qwen (Alibaba Cloud)`, `Gemini (Google)`
-   - Recommended: `OpenAI` (should match LLM provider when possible)
-   - Built-in: OpenAI, Azure, Ollama. Others require auto-scaffolding (see Step 2.5).
+2. **Embedding Provider** — 使用哪个 embedding provider？
+   - 选项：`OpenAI`、`Azure OpenAI`、`Ollama (local)`、`Qwen (Alibaba Cloud)`、`Gemini (Google)`
+   - 推荐：`OpenAI`（尽可能与 LLM provider 保持一致）
+   - 内置支持：OpenAI、Azure、Ollama。其他 provider 需要自动脚手架（见步骤 2.5）。
 
-3. **Vision** — Enable vision/image captioning?
-   - Options: `Yes`, `No`
-   - Recommended: `Yes`
+3. **Vision** — 是否启用视觉/图片描述？
+   - 选项：`Yes`、`No`
+   - 推荐：`Yes`
 
-4. **Rerank** — Enable reranking?
-   - Options: `No (fastest)`, `Cross-Encoder (local model)`, `LLM-based`
-   - Recommended: `No (fastest)`
-   - ⚠️ Note: Cross-Encoder 仅完成了本地代码实现，尚未经过充分测试，可能存在兼容性问题。建议优先选择「不启用」或「LLM 重排序」。
+4. **Rerank** — 是否启用重排序？
+   - 选项：`No (fastest)`、`Cross-Encoder (local model)`、`LLM-based`
+   - 推荐：`No (fastest)`
+   - ⚠️ 注意：Cross-Encoder 仅完成了本地代码实现，尚未经过充分测试，可能存在兼容性问题。建议优先选择「不启用」或「LLM 重排序」。
 
-### Batch 2: Credentials (based on Batch 1 answers)
+### 批次 2：凭据（基于批次 1 的回答）
 
-Ask for credentials based on selected providers. Refer to [references/provider_profiles.md](references/provider_profiles.md) for required fields per provider.
+根据所选 provider 询问凭据。各 provider 的必填字段参见 [references/provider_profiles.md](references/provider_profiles.md)。
 
-**If OpenAI selected:**
-- Ask: OpenAI API Key
-- Ask: LLM model (default: `gpt-4o`)
-- Ask: Embedding model (default: `text-embedding-ada-002`)
+**如果选择 OpenAI：**
+- 询问：OpenAI API Key
+- 询问：LLM 模型（默认：`gpt-4o`）
+- 询问：Embedding 模型（默认：`text-embedding-ada-002`）
 
-**If Azure OpenAI selected:**
-- Ask: Azure API Key
-- Ask: Azure Endpoint URL
-- Ask: LLM deployment name (default: `gpt-4o`)
-- Ask: Embedding deployment name (default: `text-embedding-ada-002`)
+**如果选择 Azure OpenAI：**
+- 询问：Azure API Key
+- 询问：Azure Endpoint URL
+- 询问：LLM deployment 名称（默认：`gpt-4o`）
+- 询问：Embedding deployment 名称（默认：`text-embedding-ada-002`）
 
-**If DeepSeek selected:**
-- Ask: DeepSeek API Key
-- Ask: Embedding provider separately (DeepSeek has no embeddings — must use OpenAI/Ollama)
+**如果选择 DeepSeek：**
+- 询问：DeepSeek API Key
+- 单独询问：Embedding provider（DeepSeek 没有 embedding — 必须使用 OpenAI/Ollama）
 
-**If Ollama selected:**
-- Ask: Ollama base URL (default: `http://localhost:11434`)
-- Ask: LLM model name (default: `llama3`)
-- Ask: Embedding model name (default: `nomic-embed-text`)
-- Verify Ollama is running: `curl http://localhost:11434/api/tags` or equivalent
+**如果选择 Ollama：**
+- 询问：Ollama base URL（默认：`http://localhost:11434`）
+- 询问：LLM 模型名称（默认：`llama3`）
+- 询问：Embedding 模型名称（默认：`nomic-embed-text`）
+- 验证 Ollama 正在运行：`curl http://localhost:11434/api/tags` 或等价命令
 
-**If Qwen selected:**
-- Ask: Qwen API Key (DashScope)
-- Ask: LLM model (default: `qwen-turbo`)
-- Ask: Embedding model (default: `text-embedding-v3`) — if Qwen also chosen for embedding
-- Base URL: `https://dashscope.aliyuncs.com/compatible-mode/v1` (OpenAI-compatible)
+**如果选择 Qwen：**
+- 询问：Qwen API Key（DashScope）
+- 询问：LLM 模型（默认：`qwen-turbo`）
+- 询问：Embedding 模型（默认：`text-embedding-v3`）— 前提是 embedding 也选择 Qwen
+- Base URL：`https://dashscope.aliyuncs.com/compatible-mode/v1`（OpenAI 兼容）
 
-**If Gemini selected:**
-- Ask: Gemini API Key (Google AI Studio)
-- Ask: LLM model (default: `gemini-2.0-flash`)
-- Ask: Embedding model (default: `text-embedding-004`) — if Gemini also chosen for embedding
-- Base URL: `https://generativelanguage.googleapis.com/v1beta/openai/` (OpenAI-compatible)
+**如果选择 Gemini：**
+- 询问：Gemini API Key（Google AI Studio）
+- 询问：LLM 模型（默认：`gemini-2.0-flash`）
+- 询问：Embedding 模型（默认：`text-embedding-004`）— 前提是 embedding 也选择 Gemini
+- Base URL：`https://generativelanguage.googleapis.com/v1beta/openai/`（OpenAI 兼容）
 
-### Batch 3: Vision Credentials (if vision enabled)
+### 批次 3：Vision 凭据（如果启用了 vision）
 
-Vision LLM has its **own independent config section** (`vision_llm`) with separate `provider`, `api_key`, `azure_endpoint`, etc. Do NOT assume it shares credentials with the main LLM.
+Vision LLM 有**自己独立的配置段**（`vision_llm`），包含单独的 `provider`、`api_key`、`azure_endpoint` 等。不要假设它与主 LLM 共享凭据。
 
-Ask up to 2 questions:
+最多询问 2 个问题：
 
-1. **Vision Provider** — Which provider for vision/image captioning?
-   - Options: same as LLM provider list, but default to user's LLM choice
-   - Built-in vision: OpenAI, Azure. Others require auto-scaffolding.
+1. **Vision Provider** — 使用哪个 provider 进行视觉/图片描述？
+   - 选项：与 LLM provider 列表相同，但默认使用用户选择的 LLM
+   - 内置 vision 支持：OpenAI、Azure。其他 provider 需要自动脚手架。
 
-2. **Vision credentials** — based on provider:
-   - If vision provider == LLM provider: ask "Reuse the same API key/endpoint for vision?" (default: Yes)
-     - If Yes: copy LLM credentials to vision config
-     - If No: ask for separate vision API key / endpoint
-   - If vision provider != LLM provider: ask for vision-specific API key / endpoint / model
+2. **Vision 凭据** — 视 provider 而定：
+   - 如果 vision provider == LLM provider：询问“Vision 是否复用相同的 API key/endpoint？”（默认：是）
+     - 若为是：将 LLM 凭据复制到 vision 配置
+     - 若为否：询问单独的 vision API key / endpoint
+   - 如果 vision provider != LLM provider：询问 vision 专用的 API key / endpoint / 模型
 
-Vision models per provider (recommended model listed first):
+各 provider 的 Vision 模型（推荐模型列在最前）：
 
-| Provider | Recommended | Other Options | Notes |
+| Provider | 推荐 | 其他选项 | 说明 |
 |----------|------------|---------------|-------|
 | OpenAI | `gpt-4o` | `gpt-4o-mini`, `gpt-4-turbo` | gpt-4o-mini 更便宜，适合简单图片描述 |
 | Azure | `gpt-4o` | `gpt-4o-mini`, `gpt-4-turbo` | 需要 deployment_name + azure_endpoint |
@@ -154,39 +154,39 @@ Vision models per provider (recommended model listed first):
 
 ---
 
-## Step 2.5: Scaffold Unimplemented Providers (if needed)
+## 步骤 2.5：脚手架生成尚未实现的 Provider（如需要）
 
-If the user selected a provider not yet built-in (e.g., Qwen, Gemini, or any custom provider), auto-scaffold the implementation before proceeding to config generation.
+如果用户选择了尚未内置的 provider（例如 Qwen、Gemini 或任意自定义 provider），在进入配置生成之前，先自动脚手架生成实现。
 
-Refer to [references/new_provider_guide.md](references/new_provider_guide.md) for the complete scaffolding procedure.
+完整的脚手架流程参见 [references/new_provider_guide.md](references/new_provider_guide.md)。
 
-Summary:
-1. Create LLM class in `src/libs/llm/{name}_llm.py` (extend `BaseLLM`)
-2. Create Embedding class in `src/libs/embedding/{name}_embedding.py` (extend `BaseEmbedding`) — if needed
-3. Create Vision LLM class in `src/libs/llm/{name}_vision_llm.py` (extend `BaseVisionLLM`) — if needed
-4. Register in `src/libs/llm/__init__.py` and `src/libs/embedding/__init__.py`
-5. Add `base_url` field to `LLMSettings` / `EmbeddingSettings` if the provider uses a custom endpoint
-6. Install provider SDK: `pip install <sdk>` if needed
-7. Add provider profile to `references/provider_profiles.md`
+概要：
+1. 在 `src/libs/llm/{name}_llm.py` 中创建 LLM 类（继承 `BaseLLM`）
+2. 在 `src/libs/embedding/{name}_embedding.py` 中创建 Embedding 类（继承 `BaseEmbedding`）— 如需要
+3. 在 `src/libs/llm/{name}_vision_llm.py` 中创建 Vision LLM 类（继承 `BaseVisionLLM`）— 如需要
+4. 在 `src/libs/llm/__init__.py` 和 `src/libs/embedding/__init__.py` 中注册
+5. 如果 provider 使用自定义 endpoint，向 `LLMSettings` / `EmbeddingSettings` 添加 `base_url` 字段
+6. 如需要，安装 provider SDK：`pip install <sdk>`
+7. 将 provider profile 添加到 `references/provider_profiles.md`
 
-Many providers (Qwen, Gemini, Groq, Mistral, etc.) are OpenAI-compatible — simply subclass `OpenAILLM` / `OpenAIEmbedding` and override `DEFAULT_BASE_URL` + auth logic.
+许多 provider（Qwen、Gemini、Groq、Mistral 等）都兼容 OpenAI — 只需继承 `OpenAILLM` / `OpenAIEmbedding`，并覆盖 `DEFAULT_BASE_URL` + 认证逻辑。
 
 ---
 
-## Step 3: Generate Config
+## 步骤 3：生成配置
 
-Read the template from [references/settings_template.yaml](references/settings_template.yaml) and fill in values based on user answers.
+从 [references/settings_template.yaml](references/settings_template.yaml) 读取模板，并根据用户回答填入值。
 
-Key rules:
-- Look up `dimensions` from the model→dimensions table in [references/provider_profiles.md](references/provider_profiles.md)
-- For Ollama: set `base_url`, leave `api_key`/`azure_endpoint`/`deployment_name` empty
-- For OpenAI: leave `azure_endpoint`/`deployment_name`/`api_version` empty
-- If vision disabled: set `vision_llm.enabled: false`
-- For rerank: set `enabled`, `provider`, and `model` accordingly
+关键规则：
+- 从 [references/provider_profiles.md](references/provider_profiles.md) 的模型→维度表中查找 `dimensions`
+- 对于 Ollama：设置 `base_url`，将 `api_key`/`azure_endpoint`/`deployment_name` 留空
+- 对于 OpenAI：将 `azure_endpoint`/`deployment_name`/`api_version` 留空
+- 如果禁用了 vision：设置 `vision_llm.enabled: false`
+- 对于 rerank：相应设置 `enabled`、`provider` 和 `model`
 
-Write the generated config to `config/settings.yaml`.
+将生成的配置写入 `config/settings.yaml`。
 
-Also ensure required directories exist:
+同时确保所需目录存在：
 
 ```powershell
 python -c "from pathlib import Path; [Path(d).mkdir(parents=True, exist_ok=True) for d in ['data/db/chroma', 'data/images/default', 'logs', 'config/prompts']]"
@@ -194,18 +194,18 @@ python -c "from pathlib import Path; [Path(d).mkdir(parents=True, exist_ok=True)
 
 ---
 
-## Step 4: Install Dependencies
+## 步骤 4：安装依赖
 
 ```powershell
 pip install -e ".[dev]"
 ```
 
-If specific providers need extra packages:
-- **Cross-Encoder rerank**: `pip install sentence-transformers`
-- **Streamlit dashboard**: `pip install streamlit`
-- **OpenAI**: `pip install openai`
+如果特定 provider 需要额外软件包：
+- **Cross-Encoder rerank**：`pip install sentence-transformers`
+- **Streamlit dashboard**：`pip install streamlit`
+- **OpenAI**：`pip install openai`
 
-Verify critical imports:
+验证关键导入：
 
 ```powershell
 python -c "import chromadb; import mcp; import yaml; print('Core deps OK')"
@@ -215,17 +215,17 @@ python -c "import openai; print('OpenAI SDK OK')"
 
 ---
 
-## Step 5: Validate Configuration
+## 步骤 5：验证配置
 
-Test that the config loads correctly:
+测试配置能否正确加载：
 
 ```powershell
 python -c "from src.core.settings import load_settings; s = load_settings(); print(f'Config OK: LLM={s.llm.provider}/{s.llm.model}, Embed={s.embedding.provider}/{s.embedding.model}')"
 ```
 
-If this fails, enter **auto-fix loop**:
+如果失败，进入**自动修复循环**：
 
-### Auto-Fix Loop (≤3 rounds)
+### 自动修复循环（≤3 轮）
 
 ```
 Round 0..2:
@@ -237,23 +237,23 @@ Round 0..2:
   If fail → next round
 ```
 
-Common fixes:
-- `SettingsError: Missing required field` → add the field to settings.yaml
+常见修复：
+- `SettingsError: Missing required field` → 将该字段添加到 settings.yaml
 - `ModuleNotFoundError` → `pip install <package>`
-- `Connection refused` (Ollama) → inform user to start Ollama service
-- Wrong `dimensions` value → look up correct value from provider_profiles.md
+- `Connection refused`（Ollama）→ 告知用户启动 Ollama 服务
+- `dimensions` 值错误 → 从 provider_profiles.md 查找正确值
 
-If 3 rounds fail, report the issue to the user with diagnosis and ask for help.
+如果 3 轮均失败，向用户报告问题并附上诊断，请求协助。
 
 ---
 
-## Step 6: Launch Dashboard
+## 步骤 6：启动 Dashboard
 
 ```powershell
 python scripts/start_dashboard.py --port 8501
 ```
 
-Run this as a **background process**. Wait a few seconds, then verify it's accessible:
+以**后台进程**运行。等待几秒，然后验证其可访问：
 
 ```powershell
 python -c "
@@ -266,16 +266,16 @@ except Exception as e:
 "
 ```
 
-If the dashboard fails to start, enter auto-fix loop:
-- Read the error output from the background terminal
-- Common issues: missing `streamlit`, port already in use, import errors
-- Fix and retry
+如果 dashboard 启动失败，进入自动修复循环：
+- 读取后台终端的错误输出
+- 常见问题：缺少 `streamlit`、端口已被占用、导入错误
+- 修复并重试
 
 ---
 
-## Step 7: Usage Guide
+## 步骤 7：使用指南
 
-After successful launch, present this to the user:
+成功启动后，向用户展示以下内容：
 
 ```
 🎉 Setup Complete!
@@ -294,4 +294,4 @@ Logs:          logs/traces.jsonl
 Provider: {provider} / Model: {model}
 ```
 
-Adapt the message based on the user's chosen providers and language (Chinese if user communicates in Chinese).
+根据用户选择的 provider 和语言调整消息内容（若用户使用中文交流，则用中文）。

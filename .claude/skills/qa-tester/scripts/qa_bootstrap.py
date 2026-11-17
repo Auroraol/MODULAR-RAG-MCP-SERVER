@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""QA Bootstrap — Set up / tear down system states for QA testing.
+"""QA Bootstrap — 为 QA 测试搭建 / 拆除系统状态。
 
-Usage:
+用法:
     python .claude/skills/qa-tester/scripts/qa_bootstrap.py [command]
 
-Commands:
-    baseline   Set up Baseline state (default collection + test_col + traces)
-    clear      Clear all data → Empty state
-    status     Show current system state
+命令:
+    baseline   搭建 Baseline 状态（default collection + test_col + traces）
+    clear      清空所有数据 → Empty 状态
+    status     显示当前系统状态
 """
 
 import argparse
@@ -25,7 +25,7 @@ DATA_DIR = REPO_ROOT / "data"
 LOGS_DIR = REPO_ROOT / "logs"
 TRACES_FILE = LOGS_DIR / "traces.jsonl"
 
-# Baseline documents
+# Baseline 文档
 BASELINE_DEFAULT = [
     FIXTURES_DIR / "simple.pdf",
     FIXTURES_DIR / "with_images.pdf",
@@ -34,7 +34,7 @@ BASELINE_TEST_COL = [
     FIXTURES_DIR / "complex_technical_doc.pdf",
 ]
 
-# Baseline queries (to generate query traces)
+# Baseline 查询（用于生成查询 Trace）
 BASELINE_QUERIES = [
     ("What is hybrid search and how does it work", "default"),
     ("What is Modular RAG", "default"),
@@ -45,7 +45,7 @@ BASELINE_QUERIES = [
 
 
 def run_cmd(args: list[str], check: bool = True, capture: bool = False) -> subprocess.CompletedProcess:
-    """Run a subprocess command from REPO_ROOT."""
+    """在 REPO_ROOT 下运行子进程命令。"""
     return subprocess.run(
         [sys.executable] + args,
         cwd=str(REPO_ROOT),
@@ -56,10 +56,10 @@ def run_cmd(args: list[str], check: bool = True, capture: bool = False) -> subpr
 
 
 def clear_all() -> None:
-    """Clear all data → Empty state."""
+    """清空所有数据 → Empty 状态。"""
     print("🗑️  Clearing all data...")
 
-    # Clear Chroma
+    # 清空 Chroma
     chroma_dir = DATA_DIR / "db" / "chroma"
     if chroma_dir.exists():
         for item in chroma_dir.iterdir():
@@ -69,7 +69,7 @@ def clear_all() -> None:
                 item.unlink()
         print("   ✅ Chroma data cleared")
 
-    # Clear BM25
+    # 清空 BM25
     bm25_dir = DATA_DIR / "db" / "bm25"
     if bm25_dir.exists():
         for item in bm25_dir.iterdir():
@@ -79,7 +79,7 @@ def clear_all() -> None:
                 item.unlink()
         print("   ✅ BM25 data cleared")
 
-    # Clear images
+    # 清空图片
     images_dir = DATA_DIR / "images"
     if images_dir.exists():
         for item in images_dir.iterdir():
@@ -89,13 +89,13 @@ def clear_all() -> None:
                 item.unlink()
         print("   ✅ Image data cleared")
 
-    # Clear file integrity DB
+    # 清空文件完整性 DB
     integrity_db = DATA_DIR / "db" / "ingestion_history.db"
     if integrity_db.exists():
         integrity_db.unlink()
         print("   ✅ File integrity DB cleared")
 
-    # Clear traces
+    # 清空 Trace
     if TRACES_FILE.exists():
         TRACES_FILE.write_text("")
         print("   ✅ Traces cleared")
@@ -104,15 +104,15 @@ def clear_all() -> None:
 
 
 def setup_baseline() -> None:
-    """Set up Baseline state: ingest docs + run queries to generate traces."""
+    """搭建 Baseline 状态：摄取文档 + 运行查询以生成 Trace。"""
     print("📦 Setting up Baseline state...")
     print()
 
-    # Step 1: Clear existing data
+    # 步骤 1：清空已有数据
     clear_all()
     print()
 
-    # Step 2: Ingest default collection
+    # 步骤 2：摄取 default collection
     print("📄 Ingesting default collection (simple.pdf + with_images.pdf)...")
     for pdf in BASELINE_DEFAULT:
         if not pdf.exists():
@@ -130,7 +130,7 @@ def setup_baseline() -> None:
 
     print()
 
-    # Step 3: Ingest test_col collection
+    # 步骤 3：摄取 test_col collection
     print("📄 Ingesting test_col collection (complex_technical_doc.pdf)...")
     for pdf in BASELINE_TEST_COL:
         if not pdf.exists():
@@ -148,7 +148,7 @@ def setup_baseline() -> None:
 
     print()
 
-    # Step 4: Run queries to generate query traces
+    # 步骤 4：运行查询以生成查询 Trace
     print("🔍 Running baseline queries to generate traces...")
     for query_item in BASELINE_QUERIES:
         if isinstance(query_item, tuple):
@@ -171,11 +171,11 @@ def setup_baseline() -> None:
 
 
 def show_status() -> None:
-    """Show current system state."""
+    """显示当前系统状态。"""
     print("📊 System Status")
     print("=" * 50)
 
-    # Check Chroma
+    # 检查 Chroma
     chroma_dir = DATA_DIR / "db" / "chroma"
     if chroma_dir.exists():
         files = list(chroma_dir.rglob("*"))
@@ -183,7 +183,7 @@ def show_status() -> None:
     else:
         print("   Chroma: empty")
 
-    # Check BM25
+    # 检查 BM25
     bm25_dir = DATA_DIR / "db" / "bm25"
     if bm25_dir.exists():
         files = list(bm25_dir.rglob("*"))
@@ -191,7 +191,7 @@ def show_status() -> None:
     else:
         print("   BM25: empty")
 
-    # Check images
+    # 检查图片
     images_dir = DATA_DIR / "images"
     if images_dir.exists():
         imgs = list(images_dir.rglob("*.png")) + list(images_dir.rglob("*.jpg"))
@@ -199,7 +199,7 @@ def show_status() -> None:
     else:
         print("   Images: empty")
 
-    # Check traces
+    # 检查 Trace
     if TRACES_FILE.exists():
         lines = [l for l in TRACES_FILE.read_text(encoding="utf-8").splitlines() if l.strip()]
         print(f"   Traces: {len(lines)} entries")

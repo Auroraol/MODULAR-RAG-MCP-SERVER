@@ -1,28 +1,27 @@
 #!/usr/bin/env python3
-"""QA Multi-Step Test Runner — Execute and verify compound test cases.
+"""QA 多步骤测试执行器 — 执行并验证复合测试用例。
 
-Provides deterministic, non-skippable multi-step test execution for tests
-that require sequential operations (ingest→query→delete→query, etc.).
+为需要顺序操作的测试（ingest→query→delete→query 等）提供确定性、
+不可跳过的多步骤测试执行。
 
-Each function prints step-by-step results with ACTUAL values so the AI
-cannot infer or skip steps.
+每个函数都会打印逐步结果和实际值，使 AI 无法推断或跳过步骤。
 
-Usage:
+用法:
     python .github/skills/qa-tester/scripts/qa_multistep.py <test_id>
 
-Supported test IDs:
-    N-01   Complete lifecycle: ingest→query→delete→query
-    N-03   Multi-collection isolation
-    N-04   Clear All Data → full recovery
-    N-05   Same file to multiple collections
-    N-06   Delete from A doesn't affect B
-    O-07   Document replacement evaluation comparison
-    M-05   YAML syntax error handling
-    M-06   Missing required config field
-    M-10   Chunk size parameter
-    M-11   Chunk overlap parameter
-    M-03   Invalid endpoint URL
-    L-07   Reranker fallback on failure
+支持的测试 ID:
+    N-01   完整生命周期：ingest→query→delete→query
+    N-03   多 collection 隔离
+    N-04   Clear All Data → 完整恢复
+    N-05   同一文件入库到多个 collection
+    N-06   从 A 删除不影响 B
+    O-07   文档替换的评估分数对比
+    M-05   YAML 语法错误处理
+    M-06   缺少必需配置字段
+    M-10   Chunk 大小参数
+    M-11   Chunk 重叠参数
+    M-03   无效的 endpoint URL
+    L-07   Reranker 失败时的降级
 """
 
 import argparse
@@ -44,7 +43,7 @@ CONFIG_BAK = REPO_ROOT / "config" / "settings.yaml.multistep_bak"
 
 
 def run(args, check=False, capture=True):
-    """Run a command and return CompletedProcess."""
+    """运行命令并返回 CompletedProcess。"""
     r = subprocess.run(
         [sys.executable] + args,
         cwd=str(REPO_ROOT),
@@ -58,7 +57,7 @@ def run(args, check=False, capture=True):
 
 
 def clear_all():
-    """Clear all data via bootstrap script."""
+    """通过 bootstrap 脚本清空所有数据。"""
     r = run([str(REPO_ROOT / ".github/skills/qa-tester/scripts/qa_bootstrap.py"), "clear"])
     if r.returncode != 0:
         print(f"  ⚠️ Clear failed: {r.stderr}")
@@ -66,7 +65,7 @@ def clear_all():
 
 
 def ingest(path, collection="default", force=False):
-    """Ingest a file and return (exit_code, stdout)."""
+    """入库一个文件并返回 (exit_code, stdout)。"""
     args = [str(SCRIPTS / "ingest.py"), "--path", str(path), "--collection", collection]
     if force:
         args.append("--force")
@@ -75,19 +74,19 @@ def ingest(path, collection="default", force=False):
 
 
 def query(q, collection="default", top_k=10):
-    """Query and return (exit_code, stdout)."""
+    """执行查询并返回 (exit_code, stdout)。"""
     r = run([str(SCRIPTS / "query.py"), "--query", q, "--collection", collection, "--top-k", str(top_k)])
     return r.returncode, r.stdout
 
 
 def evaluate():
-    """Run evaluation and return (exit_code, stdout)."""
+    """运行评估并返回 (exit_code, stdout)。"""
     r = run([str(SCRIPTS / "evaluate.py")])
     return r.returncode, r.stdout
 
 
 def delete_document(source_path, collection="default"):
-    """Delete a document via DataService."""
+    """通过 DataService 删除一个文档。"""
     code = f"""
 import sys
 sys.path.insert(0, '{REPO_ROOT}')
@@ -107,7 +106,7 @@ else:
 
 
 def extract_sources(stdout):
-    """Extract source_path values from query output."""
+    """从查询输出中提取 source_path 值。"""
     sources = []
     for line in stdout.splitlines():
         if "source_path=" in line:
@@ -128,11 +127,11 @@ def restore_config():
 
 
 # ═══════════════════════════════════════════════════════════════
-# Test implementations
+# 测试实现
 # ═══════════════════════════════════════════════════════════════
 
 def test_N01():
-    """N-01: Complete lifecycle ingest→query→delete→query"""
+    """N-01：完整生命周期 ingest→query→delete→query"""
     print("=" * 60)
     print("TEST N-01: Complete lifecycle: ingest→query→delete→query")
     print("=" * 60)
@@ -176,7 +175,7 @@ def test_N01():
 
 
 def test_N03():
-    """N-03: Multi-collection isolation"""
+    """N-03：多 collection 隔离"""
     print("=" * 60)
     print("TEST N-03: Multi-collection isolation")
     print("=" * 60)
@@ -212,7 +211,7 @@ def test_N03():
 
 
 def test_N04():
-    """N-04: Clear All Data → full recovery"""
+    """N-04：Clear All Data → 完整恢复"""
     print("=" * 60)
     print("TEST N-04: Clear All Data → full recovery")
     print("=" * 60)
@@ -244,7 +243,7 @@ def test_N04():
 
 
 def test_N05():
-    """N-05: Same file to multiple collections"""
+    """N-05：同一文件入库到多个 collection"""
     print("=" * 60)
     print("TEST N-05: Same file to multiple collections")
     print("=" * 60)
@@ -278,12 +277,12 @@ def test_N05():
 
 
 def test_N06():
-    """N-06: Delete from A doesn't affect B"""
+    """N-06：从 A 删除不影响 B"""
     print("=" * 60)
     print("TEST N-06: Delete from col_1 doesn't affect col_2")
     print("=" * 60)
 
-    # Ensure both collections have simple.pdf
+    # 确保两个 collection 中都有 simple.pdf
     print("\n[Step 1] Ensure simple.pdf in col_1 and col_2")
     ingest(FIXTURES / "simple.pdf", "col_1", force=True)
     ingest(FIXTURES / "simple.pdf", "col_2", force=True)
@@ -305,7 +304,7 @@ def test_N06():
 
 
 def test_O07():
-    """O-07: Document replacement evaluation comparison"""
+    """O-07：文档替换的评估分数对比"""
     print("=" * 60)
     print("TEST O-07: Document replacement → evaluation score comparison")
     print("=" * 60)
@@ -316,7 +315,7 @@ def test_O07():
     print(f"  ingest exit_code={ec1}")
     ec_e1, eval_out1 = evaluate()
     print(f"  evaluate exit_code={ec_e1}")
-    # Extract per-query retrieval counts
+    # 提取每条查询的检索数量
     print(f"  --- English doc evaluation output (last 30 lines) ---")
     for line in eval_out1.strip().splitlines()[-30:]:
         print(f"  {line}")
@@ -331,9 +330,9 @@ def test_O07():
     for line in eval_out2.strip().splitlines()[-30:]:
         print(f"  {line}")
 
-    # Try to extract chunk retrieval counts to compare
+    # 尝试提取 chunk 检索数量以进行对比
     def count_retrieved(output):
-        """Count total retrieved chunks across all queries."""
+        """统计所有查询检索到的 chunk 总数。"""
         total = 0
         for line in output.splitlines():
             if "Retrieved:" in line:
@@ -352,8 +351,8 @@ def test_O07():
     print(f"  English doc (complex_technical_doc.pdf): {en_chunks} total retrieved chunks")
     print(f"  Chinese doc (chinese_technical_doc.pdf): {zh_chunks} total retrieved chunks")
     print(f"  English golden_test_set queries match English doc better: {en_chunks >= zh_chunks}")
-    # Note: With NoneEvaluator (default), no numeric scores are computed.
-    # The comparison is based on retrieval hit quality observable in the output.
+    # 注意：使用默认的 NoneEvaluator 时不会计算数值分数。
+    # 对比基于输出中可观察到的检索命中质量。
     passed = ec_e1 == 0 and ec_e2 == 0
     print(f"VERDICT: {'PASS' if passed else 'FAIL'} (both evaluations completed)")
     print(f"  NOTE: Compare the evaluation outputs above for score differences.")
@@ -362,7 +361,7 @@ def test_O07():
 
 
 def test_M05():
-    """M-05: YAML syntax error handling"""
+    """M-05：YAML 语法错误处理"""
     print("=" * 60)
     print("TEST M-05: settings.yaml syntax error")
     print("=" * 60)
@@ -396,7 +395,7 @@ def test_M05():
 
 
 def test_M06():
-    """M-06: Missing required config field"""
+    """M-06：缺少必需配置字段"""
     print("=" * 60)
     print("TEST M-06: settings.yaml missing required field")
     print("=" * 60)
@@ -432,7 +431,7 @@ def test_M06():
 
 
 def test_M10():
-    """M-10: Chunk size parameter adjustment"""
+    """M-10：Chunk 大小参数调整"""
     print("=" * 60)
     print("TEST M-10: chunk_size=500 produces more chunks")
     print("=" * 60)
@@ -442,7 +441,7 @@ def test_M10():
     try:
         print("\n[Step 1] Ingest simple.pdf with default chunk_size=1000")
         ec1, out1 = ingest(FIXTURES / "simple.pdf", "default", force=True)
-        # Count chunks from output
+        # 从输出中统计 chunk 数
         chunks_1000 = 0
         for line in out1.splitlines():
             if "Chunks generated:" in line:
@@ -469,10 +468,10 @@ def test_M10():
         print(f"  chunks with chunk_size=500: {chunks_500}")
 
         print("\n" + "=" * 60)
-        # For simple.pdf (408 chars), even chunk_size=500 may produce 1 chunk
-        # Use chinese_technical_doc.pdf for better comparison if needed
+        # 对于 simple.pdf（408 字符），即使 chunk_size=500 也可能只产生 1 个 chunk
+        # 如有需要，可改用 chinese_technical_doc.pdf 做更明显的对比
         print(f"VERDICT: chunks_500={chunks_500} >= chunks_1000={chunks_1000}")
-        passed = chunks_500 >= chunks_1000  # should be >= (more or equal chunks with smaller size)
+        passed = chunks_500 >= chunks_1000  # 应 >=（chunk 更小时数量更多或相等）
         print(f"  {'PASS' if passed else 'FAIL'}")
         return passed
     finally:
@@ -481,7 +480,7 @@ def test_M10():
 
 
 def test_M03():
-    """M-03: Invalid Azure endpoint URL"""
+    """M-03：无效的 Azure endpoint URL"""
     print("=" * 60)
     print("TEST M-03: Invalid Azure endpoint URL")
     print("=" * 60)
@@ -499,7 +498,7 @@ def test_M03():
         print("\n[Step 2] Run ingest (will fail at Transform stage)")
         r = run([str(SCRIPTS / "ingest.py"), "--path", str(FIXTURES / "simple.pdf"), "--force"])
         print(f"  exit_code={r.returncode}")
-        # Check for connection error in output
+        # 检查输出中是否有连接错误
         combined = r.stdout + r.stderr
         has_error = any(k in combined.lower() for k in ["error", "fail", "connection", "dns", "resolve"])
         print(f"  has_connection_error={has_error}")
@@ -516,7 +515,7 @@ def test_M03():
 
 
 def test_L07():
-    """L-07: Reranker failure fallback"""
+    """L-07：Reranker 失败降级"""
     print("=" * 60)
     print("TEST L-07: Reranker failure → fallback to RRF results")
     print("=" * 60)
@@ -546,7 +545,7 @@ def test_L07():
             print(f"    {line}")
 
         print("\n" + "=" * 60)
-        passed = has_results  # Query should still return results via fallback
+        passed = has_results  # 查询应通过降级仍返回结果
         print(f"VERDICT: {'PASS' if passed else 'FAIL'}")
         print(f"  Reranker failed but query still returned results: {passed}")
         return passed
@@ -556,7 +555,7 @@ def test_L07():
 
 
 def test_M11():
-    """M-11: Chunk overlap parameter adjustment"""
+    """M-11：Chunk 重叠参数调整"""
     print("=" * 60)
     print("TEST M-11: chunk_overlap=0 → no overlapping text between chunks")
     print("=" * 60)
@@ -564,7 +563,7 @@ def test_M11():
     import yaml
     backup_config()
     try:
-        # Use a longer document to get multiple chunks
+        # 使用较长的文档以获得多个 chunk
         doc = FIXTURES / "chinese_technical_doc.pdf"
 
         print("\n[Step 1] Ingest with default chunk_overlap=200")
@@ -592,7 +591,7 @@ def test_M11():
 
         print("\n" + "=" * 60)
         print(f"COMPARISON: overlap=200 → {chunks_200} chunks, overlap=0 → {chunks_0} chunks")
-        # With no overlap, we may get fewer or equal chunks (no repeated text between chunks)
+        # 无重叠时 chunk 数量可能更少或相等（chunk 之间没有重复文本）
         passed = chunks_0 > 0 and chunks_200 > 0
         print(f"VERDICT: {'PASS' if passed else 'FAIL'}")
         print(f"  Both configurations produced chunks: {passed}")
@@ -603,7 +602,7 @@ def test_M11():
 
 
 def test_M04():
-    """M-04: Vision LLM disabled → captioning skipped"""
+    """M-04：Vision LLM 关闭 → 跳过 caption 生成"""
     print("=" * 60)
     print("TEST M-04: Vision LLM disabled → captioning skipped")
     print("=" * 60)
@@ -625,7 +624,7 @@ def test_M04():
 
         combined = r.stdout + r.stderr
         caption_skipped = "captioned" in combined.lower() or "skip" in combined.lower() or "vision" in combined.lower()
-        # Look for captioned=0 or "skipping captioning"
+        # 查找 captioned=0 或 "skipping captioning"
         captioned_zero = False
         for line in combined.splitlines():
             if "Chunks with captions:" in line and "0" in line.split("Chunks with captions:")[1]:
@@ -648,7 +647,7 @@ def test_M04():
 
 
 # ═══════════════════════════════════════════════════════════════
-# Main
+# 主入口
 # ═══════════════════════════════════════════════════════════════
 
 TESTS = {

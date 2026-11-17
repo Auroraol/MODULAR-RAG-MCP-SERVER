@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""QA Config — Switch settings.yaml profiles for testing different configurations.
+"""QA Config — 切换 settings.yaml 配置档，以测试不同的配置组合。
 
-Usage:
-    python .github/skills/qa-tester/scripts/qa_config.py show          # List profiles
-    python .github/skills/qa-tester/scripts/qa_config.py check         # Verify credentials
-    python .github/skills/qa-tester/scripts/qa_config.py apply <name>  # Apply a profile
-    python .github/skills/qa-tester/scripts/qa_config.py restore       # Restore backup
+用法:
+    python .github/skills/qa-tester/scripts/qa_config.py show          # 列出配置档
+    python .github/skills/qa-tester/scripts/qa_config.py check         # 校验凭证
+    python .github/skills/qa-tester/scripts/qa_config.py apply <name>  # 应用配置档
+    python .github/skills/qa-tester/scripts/qa_config.py restore       # 还原备份
 
-Profiles:
-    deepseek         LLM → DeepSeek + Vision disabled (needs test_credentials.yaml)
-    rerank_llm       Rerank → LLM-based
-    no_vision        Vision LLM disabled
-    invalid_llm_key  LLM API key set to invalid
-    invalid_embed_key  Embedding API key set to invalid
+配置档:
+    deepseek         LLM → DeepSeek + 关闭 Vision（需要 test_credentials.yaml）
+    rerank_llm       Rerank → 基于 LLM
+    no_vision        关闭 Vision LLM
+    invalid_llm_key  将 LLM API key 设为无效值
+    invalid_embed_key  将 Embedding API key 设为无效值
 """
 
 import argparse
@@ -37,13 +37,13 @@ def _load_yaml(path: Path) -> dict:
 
 
 def _save_yaml(path: Path, data: dict) -> None:
-    # Preserve comments by doing targeted edits — but for simplicity,
-    # we use dump with default_flow_style=False
+    # 通过定点编辑来保留注释 — 但为简单起见，
+    # 使用 default_flow_style=False 进行转储
     path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True), encoding="utf-8")
 
 
 def _backup() -> None:
-    """Create backup if not already backed up."""
+    """若尚未备份则创建备份。"""
     if not SETTINGS_BACKUP.exists():
         shutil.copy2(SETTINGS_FILE, SETTINGS_BACKUP)
         print(f"   📋 Backup created: {SETTINGS_BACKUP.name}")
@@ -52,14 +52,14 @@ def _backup() -> None:
 
 
 def _load_credentials() -> dict | None:
-    """Load test_credentials.yaml."""
+    """加载 test_credentials.yaml。"""
     if not CREDENTIALS_FILE.exists():
         return None
     return _load_yaml(CREDENTIALS_FILE)
 
 
 def apply_deepseek(settings: dict) -> dict:
-    """Switch LLM to DeepSeek, disable Vision."""
+    """将 LLM 切换为 DeepSeek，关闭 Vision。"""
     creds = _load_credentials()
     if not creds or "deepseek" not in creds:
         print("   ❌ DeepSeek credentials not found in test_credentials.yaml")
@@ -76,11 +76,11 @@ def apply_deepseek(settings: dict) -> dict:
     settings["llm"]["api_key"] = api_key
     if "base_url" in ds:
         settings["llm"]["base_url"] = ds["base_url"]
-    # Remove Azure-specific fields
+    # 移除 Azure 专有字段
     for key in ["deployment_name", "azure_endpoint", "api_version"]:
         settings["llm"].pop(key, None)
 
-    # Disable Vision LLM (DeepSeek has no Vision API)
+    # 关闭 Vision LLM（DeepSeek 无 Vision API）
     settings["vision_llm"]["enabled"] = False
 
     print("   LLM -> deepseek / " + ds.get("model", "deepseek-chat"))
@@ -89,7 +89,7 @@ def apply_deepseek(settings: dict) -> dict:
 
 
 def apply_rerank_llm(settings: dict) -> dict:
-    """Enable LLM-based reranking."""
+    """启用基于 LLM 的 rerank。"""
     settings["rerank"]["enabled"] = True
     settings["rerank"]["provider"] = "llm"
     settings["rerank"]["top_k"] = 5
@@ -98,21 +98,21 @@ def apply_rerank_llm(settings: dict) -> dict:
 
 
 def apply_no_vision(settings: dict) -> dict:
-    """Disable Vision LLM."""
+    """关闭 Vision LLM。"""
     settings["vision_llm"]["enabled"] = False
     print("   Vision -> disabled")
     return settings
 
 
 def apply_invalid_llm_key(settings: dict) -> dict:
-    """Set LLM API key to invalid value."""
+    """将 LLM API key 设为无效值。"""
     settings["llm"]["api_key"] = "invalid_key_12345"
     print("   LLM api_key -> invalid_key_12345")
     return settings
 
 
 def apply_invalid_embed_key(settings: dict) -> dict:
-    """Set Embedding API key to invalid value."""
+    """将 Embedding API key 设为无效值。"""
     settings["embedding"]["api_key"] = "invalid_key_12345"
     print("   Embedding api_key -> invalid_key_12345")
     return settings
@@ -128,7 +128,7 @@ PROFILES = {
 
 
 def cmd_show() -> None:
-    """Show available profiles."""
+    """显示可用的配置档。"""
     print("📋 Available Configuration Profiles")
     print("=" * 50)
     for name, fn in PROFILES.items():
@@ -140,7 +140,7 @@ def cmd_show() -> None:
 
 
 def cmd_check() -> None:
-    """Check credentials file."""
+    """校验凭证文件。"""
     print("🔑 Credential Check")
     print("=" * 50)
     if not CREDENTIALS_FILE.exists():
@@ -160,7 +160,7 @@ def cmd_check() -> None:
 
 
 def cmd_apply(profile_name: str) -> None:
-    """Apply a configuration profile."""
+    """应用配置档。"""
     if profile_name not in PROFILES:
         print(f"❌ Unknown profile: {profile_name}")
         print(f"   Available: {', '.join(PROFILES.keys())}")
@@ -176,7 +176,7 @@ def cmd_apply(profile_name: str) -> None:
 
 
 def cmd_restore() -> None:
-    """Restore settings.yaml from backup."""
+    """从备份还原 settings.yaml。"""
     if not SETTINGS_BACKUP.exists():
         print("❌ No backup found. Nothing to restore.")
         return

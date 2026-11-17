@@ -1,16 +1,16 @@
-"""Integration tests for HybridSearch.
+"""HybridSearch 的集成测试。
 
-This test module validates the HybridSearch orchestration layer:
-- Complete retrieval flow (query → dense+sparse → fusion → results)
-- Graceful degradation when one retriever fails
-- Metadata filtering (pre and post-fusion)
-- Parallel vs sequential retrieval modes
-- Edge cases and error handling
+该测试模块校验 HybridSearch 编排层:
+- 完整检索流程（query → dense+sparse → fusion → results）
+- 某一 retriever 失败时的优雅降级
+- metadata 过滤（融合前与融合后）
+- 并行与串行检索模式
+- 边界情况与错误处理
 
-Test Strategy:
-- Use mock/fake retrievers for deterministic behavior
-- Test actual component integration (not just mocking)
-- Cover both success and failure scenarios
+测试策略:
+- 使用 mock/fake retriever 以保证行为确定性
+- 测试真实的组件集成（不仅是 mock）
+- 覆盖成功与失败两种场景
 """
 
 import pytest
@@ -30,11 +30,11 @@ from src.core.query_engine.fusion import RRFFusion
 
 
 # =============================================================================
-# Test Fixtures - Mock Components
+# 测试 Fixture - Mock 组件
 # =============================================================================
 
 class MockDenseRetriever:
-    """Mock Dense Retriever for testing."""
+    """用于测试的 Mock Dense Retriever。"""
     
     def __init__(
         self,
@@ -69,7 +69,7 @@ class MockDenseRetriever:
 
 
 class MockSparseRetriever:
-    """Mock Sparse Retriever for testing."""
+    """用于测试的 Mock Sparse Retriever。"""
     
     def __init__(
         self,
@@ -105,7 +105,7 @@ class MockSparseRetriever:
 
 @pytest.fixture
 def sample_dense_results() -> List[RetrievalResult]:
-    """Sample results from dense retrieval."""
+    """来自 dense 检索的结果样本。"""
     return [
         RetrievalResult(
             chunk_id="dense_1",
@@ -136,7 +136,7 @@ def sample_dense_results() -> List[RetrievalResult]:
 
 @pytest.fixture
 def sample_sparse_results() -> List[RetrievalResult]:
-    """Sample results from sparse retrieval."""
+    """来自 sparse 检索的结果样本。"""
     return [
         RetrievalResult(
             chunk_id="sparse_1",
@@ -145,7 +145,7 @@ def sample_sparse_results() -> List[RetrievalResult]:
             metadata={"source_path": "docs/azure-setup.pdf", "collection": "tutorials"},
         ),
         RetrievalResult(
-            chunk_id="common_chunk",  # Same as in dense
+            chunk_id="common_chunk",  # 与 dense 中的相同
             score=7.2,
             text="通用配置说明",
             metadata={"source_path": "docs/common.pdf", "collection": "general"},
@@ -161,22 +161,22 @@ def sample_sparse_results() -> List[RetrievalResult]:
 
 @pytest.fixture
 def query_processor() -> QueryProcessor:
-    """Real QueryProcessor instance."""
+    """真实的 QueryProcessor 实例。"""
     return QueryProcessor()
 
 
 @pytest.fixture
 def rrf_fusion() -> RRFFusion:
-    """Real RRFFusion instance with default k=60."""
+    """真实 RRFFusion 实例，默认 k=60。"""
     return RRFFusion(k=60)
 
 
 # =============================================================================
-# Basic Functionality Tests
+# 基础功能测试
 # =============================================================================
 
 class TestHybridSearchBasic:
-    """Test basic HybridSearch functionality."""
+    """测试 HybridSearch 的基础功能。"""
     
     def test_init_with_all_components(
         self,
@@ -185,7 +185,7 @@ class TestHybridSearchBasic:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test initialization with all components."""
+        """测试使用全部组件进行初始化。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -202,7 +202,7 @@ class TestHybridSearchBasic:
         assert hybrid.fusion is rrf_fusion
     
     def test_init_with_config(self):
-        """Test initialization with custom config."""
+        """测试使用自定义配置初始化。"""
         config = HybridSearchConfig(
             dense_top_k=30,
             sparse_top_k=30,
@@ -224,7 +224,7 @@ class TestHybridSearchBasic:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that search returns fused results."""
+        """测试 search 返回融合后的结果。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -237,11 +237,11 @@ class TestHybridSearchBasic:
         
         results = hybrid.search("如何配置 Azure OpenAI？", top_k=5)
         
-        # Should return results
+        # 应返回结果
         assert len(results) > 0
         assert len(results) <= 5
-        
-        # Results should be RetrievalResult objects
+
+        # 结果应为 RetrievalResult 对象
         for r in results:
             assert isinstance(r, RetrievalResult)
             assert r.chunk_id
@@ -255,7 +255,7 @@ class TestHybridSearchBasic:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test search with return_details=True."""
+        """测试 return_details=True 时的 search。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -284,7 +284,7 @@ class TestHybridSearchBasic:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that both retrievers are called."""
+        """测试两个 retriever 都会被调用。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -307,7 +307,7 @@ class TestHybridSearchBasic:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that common chunks appear only once in results."""
+        """测试相同 chunk 在结果中只出现一次。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -320,20 +320,20 @@ class TestHybridSearchBasic:
         
         results = hybrid.search("配置", top_k=10)
         
-        # Check for duplicate chunk_ids
+        # 检查是否有重复的 chunk_id
         chunk_ids = [r.chunk_id for r in results]
         assert len(chunk_ids) == len(set(chunk_ids)), "Results contain duplicate chunk_ids"
-        
-        # The common_chunk should appear exactly once
+
+        # common_chunk 应恰好出现一次
         assert chunk_ids.count("common_chunk") <= 1
 
 
 # =============================================================================
-# Graceful Degradation Tests
+# 优雅降级测试
 # =============================================================================
 
 class TestHybridSearchDegradation:
-    """Test graceful degradation when components fail."""
+    """测试组件失败时的优雅降级。"""
     
     def test_dense_fails_uses_sparse_only(
         self,
@@ -341,7 +341,7 @@ class TestHybridSearchDegradation:
         rrf_fusion: RRFFusion,
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test fallback to sparse when dense fails."""
+        """测试 dense 失败时回退到 sparse。"""
         dense = MockDenseRetriever(should_fail=True)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -366,7 +366,7 @@ class TestHybridSearchDegradation:
         rrf_fusion: RRFFusion,
         sample_dense_results: List[RetrievalResult],
     ):
-        """Test fallback to dense when sparse fails."""
+        """测试 sparse 失败时回退到 dense。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(should_fail=True)
         
@@ -390,7 +390,7 @@ class TestHybridSearchDegradation:
         query_processor: QueryProcessor,
         rrf_fusion: RRFFusion,
     ):
-        """Test that RuntimeError is raised when both retrievers fail."""
+        """测试两个 retriever 都失败时抛出 RuntimeError。"""
         dense = MockDenseRetriever(should_fail=True)
         sparse = MockSparseRetriever(should_fail=True)
         
@@ -411,7 +411,7 @@ class TestHybridSearchDegradation:
         query_processor: QueryProcessor,
         rrf_fusion: RRFFusion,
     ):
-        """Test behavior when no retrievers are configured."""
+        """测试未配置任何 retriever 时的行为。"""
         hybrid = HybridSearch(
             query_processor=query_processor,
             dense_retriever=None,
@@ -430,7 +430,7 @@ class TestHybridSearchDegradation:
         rrf_fusion: RRFFusion,
         sample_dense_results: List[RetrievalResult],
     ):
-        """Test search with only dense retriever."""
+        """测试仅使用 dense retriever 的检索。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         
         hybrid = HybridSearch(
@@ -451,7 +451,7 @@ class TestHybridSearchDegradation:
         rrf_fusion: RRFFusion,
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test search with only sparse retriever."""
+        """测试仅使用 sparse retriever 的检索。"""
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
         hybrid = HybridSearch(
@@ -468,11 +468,11 @@ class TestHybridSearchDegradation:
 
 
 # =============================================================================
-# Filter Tests
+# 过滤测试
 # =============================================================================
 
 class TestHybridSearchFilters:
-    """Test metadata filtering functionality."""
+    """测试 metadata 过滤功能。"""
     
     def test_explicit_filters_passed_to_retrievers(
         self,
@@ -481,7 +481,7 @@ class TestHybridSearchFilters:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that explicit filters are passed to retrievers."""
+        """测试显式配置的 filters 会传递给 retriever。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -504,7 +504,7 @@ class TestHybridSearchFilters:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that filters in query syntax are extracted."""
+        """测试从查询语法中提取过滤器。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -517,7 +517,7 @@ class TestHybridSearchFilters:
         
         result = hybrid.search("collection:api-docs Azure 配置", top_k=5, return_details=True)
         
-        # Check that filter was extracted from query
+        # 检查过滤器是否从查询中提取
         assert result.processed_query is not None
         assert "collection" in result.processed_query.filters
     
@@ -528,7 +528,7 @@ class TestHybridSearchFilters:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test post-fusion metadata filtering."""
+        """测试融合后的 metadata 过滤。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -541,20 +541,20 @@ class TestHybridSearchFilters:
             config=config,
         )
         
-        # Filter for api-docs collection only
+        # 仅保留 api-docs collection
         results = hybrid.search("Azure", top_k=10, filters={"collection": "api-docs"})
-        
-        # All results should have collection=api-docs
+
+        # 所有结果的 collection 均应为 api-docs
         for r in results:
             assert r.metadata.get("collection") == "api-docs"
 
 
 # =============================================================================
-# Configuration Tests
+# 配置测试
 # =============================================================================
 
 class TestHybridSearchConfig:
-    """Test configuration behavior."""
+    """测试配置行为。"""
     
     def test_top_k_from_config(
         self,
@@ -563,7 +563,7 @@ class TestHybridSearchConfig:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that top_k values from config are used."""
+        """测试使用配置中的 top_k 值。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -580,7 +580,7 @@ class TestHybridSearchConfig:
             config=config,
         )
         
-        results = hybrid.search("Azure")  # No explicit top_k
+        results = hybrid.search("Azure")  # 未显式指定 top_k
         
         assert dense.last_top_k == 3
         assert sparse.last_top_k == 3
@@ -593,7 +593,7 @@ class TestHybridSearchConfig:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that explicit top_k overrides config."""
+        """测试显式 top_k 会覆盖配置。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -615,7 +615,7 @@ class TestHybridSearchConfig:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test sequential retrieval mode (non-parallel)."""
+        """测试串行检索模式（非并行）。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -630,25 +630,25 @@ class TestHybridSearchConfig:
         
         results = hybrid.search("Azure", top_k=5)
         
-        # Both should be called
+        # 两者都应被调用
         assert dense.call_count == 1
         assert sparse.call_count == 1
         assert len(results) > 0
 
 
 # =============================================================================
-# Edge Cases and Error Handling Tests
+# 边界情况与错误处理测试
 # =============================================================================
 
 class TestHybridSearchEdgeCases:
-    """Test edge cases and error handling."""
+    """测试边界情况与错误处理。"""
     
     def test_empty_query_raises_error(
         self,
         query_processor: QueryProcessor,
         rrf_fusion: RRFFusion,
     ):
-        """Test that empty query raises ValueError."""
+        """测试空查询会抛出 ValueError。"""
         hybrid = HybridSearch(
             query_processor=query_processor,
             fusion=rrf_fusion,
@@ -664,7 +664,7 @@ class TestHybridSearchEdgeCases:
         query_processor: QueryProcessor,
         rrf_fusion: RRFFusion,
     ):
-        """Test that whitespace-only query raises ValueError."""
+        """测试仅含空白的查询会抛出 ValueError。"""
         hybrid = HybridSearch(
             query_processor=query_processor,
             fusion=rrf_fusion,
@@ -680,7 +680,7 @@ class TestHybridSearchEdgeCases:
         query_processor: QueryProcessor,
         rrf_fusion: RRFFusion,
     ):
-        """Test handling when both retrievers return empty results."""
+        """测试两个 retriever 均返回空结果时的处理。"""
         dense = MockDenseRetriever(results=[])
         sparse = MockSparseRetriever(results=[])
         
@@ -701,11 +701,11 @@ class TestHybridSearchEdgeCases:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that sparse is skipped when no keywords extracted."""
-        # Mock query processor that returns empty keywords
+        """测试未提取到关键词时跳过 sparse 检索。"""
+        # Mock 查询处理器，返回空关键词
         mock_processor = MagicMock()
         mock_processor.process.return_value = ProcessedQuery(
-            original_query="的",  # Only stopwords
+            original_query="的",  # 仅包含停用词
             keywords=[],
             filters={},
         )
@@ -722,7 +722,7 @@ class TestHybridSearchEdgeCases:
         
         results = hybrid.search("的", top_k=5)
         
-        # Dense should be called, sparse may be called but with empty keywords
+        # dense 应被调用，sparse 可能被调用但关键词为空
         assert dense.call_count == 1
         assert len(results) > 0
     
@@ -732,12 +732,12 @@ class TestHybridSearchEdgeCases:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test fallback when no QueryProcessor is configured."""
+        """测试未配置 QueryProcessor 时的回退。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
         hybrid = HybridSearch(
-            query_processor=None,  # No processor
+            query_processor=None,  # 无处理器
             dense_retriever=dense,
             sparse_retriever=sparse,
             fusion=rrf_fusion,
@@ -745,7 +745,7 @@ class TestHybridSearchEdgeCases:
         
         results = hybrid.search("Azure OpenAI", top_k=5)
         
-        # Should still work with basic tokenization
+        # 使用基础分词应仍可正常工作
         assert len(results) > 0
     
     def test_no_fusion_interleave_fallback(
@@ -754,7 +754,7 @@ class TestHybridSearchEdgeCases:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test interleave fallback when no fusion is configured."""
+        """测试未配置 fusion 时的交错回退。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -762,33 +762,33 @@ class TestHybridSearchEdgeCases:
             query_processor=query_processor,
             dense_retriever=dense,
             sparse_retriever=sparse,
-            fusion=None,  # No fusion
+            fusion=None,  # 无融合
         )
-        
+
         results = hybrid.search("Azure", top_k=5)
-        
-        # Should still return results (interleaved)
+
+        # 应仍返回结果（交错合并）
         assert len(results) > 0
         assert len(results) <= 5
 
 
 # =============================================================================
-# Factory Function Tests
+# 工厂函数测试
 # =============================================================================
 
 class TestCreateHybridSearch:
-    """Test the create_hybrid_search factory function."""
-    
+    """测试 create_hybrid_search 工厂函数。"""
+
     def test_creates_default_fusion(self):
-        """Test that default RRF fusion is created."""
+        """测试会创建默认的 RRF 融合。"""
         hybrid = create_hybrid_search()
-        
+
         assert hybrid.fusion is not None
         assert isinstance(hybrid.fusion, RRFFusion)
-        assert hybrid.fusion.k == 60  # Default k
-    
+        assert hybrid.fusion.k == 60  # 默认 k
+
     def test_uses_provided_fusion(self, rrf_fusion: RRFFusion):
-        """Test that provided fusion is used."""
+        """测试使用传入的 fusion。"""
         custom_fusion = RRFFusion(k=30)
         
         hybrid = create_hybrid_search(fusion=custom_fusion)
@@ -802,7 +802,7 @@ class TestCreateHybridSearch:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that all components are passed through."""
+        """测试所有组件均被透传。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
@@ -818,11 +818,11 @@ class TestCreateHybridSearch:
 
 
 # =============================================================================
-# RRF Fusion Integration Tests
+# RRF 融合集成测试
 # =============================================================================
 
 class TestRRFFusionIntegration:
-    """Test actual RRF fusion behavior in HybridSearch."""
+    """测试 HybridSearch 中真实的 RRF 融合行为。"""
     
     def test_common_chunks_boosted_by_rrf(
         self,
@@ -830,11 +830,11 @@ class TestRRFFusionIntegration:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that chunks appearing in both results get boosted."""
+        """测试同时出现在两路结果中的 chunk 会获得加权。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         
-        # Use RRF fusion
+        # 使用 RRF 融合
         fusion = RRFFusion(k=60)
         hybrid = HybridSearch(
             query_processor=query_processor,
@@ -845,14 +845,14 @@ class TestRRFFusionIntegration:
         
         results = hybrid.search("配置", top_k=10)
         
-        # common_chunk appears in both, should be ranked higher
+        # common_chunk 同时出现在两路中，应获得更高排名
         chunk_ids = [r.chunk_id for r in results]
-        
-        # Check that common_chunk is present
+
+        # 检查 common_chunk 是否存在
         if "common_chunk" in chunk_ids:
             common_idx = chunk_ids.index("common_chunk")
-            # It should be relatively high due to RRF boost
-            # (appears in both lists = sum of RRF scores)
+            # 由于 RRF 加权，其排名应相对靠前
+            # （同时出现在两个列表中 = RRF 分数之和）
             assert common_idx < 5, "common_chunk should be boosted by RRF"
     
     def test_rrf_scores_are_deterministic(
@@ -861,7 +861,7 @@ class TestRRFFusionIntegration:
         sample_dense_results: List[RetrievalResult],
         sample_sparse_results: List[RetrievalResult],
     ):
-        """Test that RRF fusion produces deterministic results."""
+        """测试 RRF 融合产生确定性的结果。"""
         dense = MockDenseRetriever(results=sample_dense_results)
         sparse = MockSparseRetriever(results=sample_sparse_results)
         fusion = RRFFusion(k=60)
@@ -873,11 +873,11 @@ class TestRRFFusionIntegration:
             fusion=fusion,
         )
         
-        # Run same search multiple times
+        # 多次执行相同检索
         results1 = hybrid.search("配置", top_k=5)
         results2 = hybrid.search("配置", top_k=5)
-        
-        # Results should be identical
+
+        # 结果应完全相同
         assert len(results1) == len(results2)
         for r1, r2 in zip(results1, results2):
             assert r1.chunk_id == r2.chunk_id

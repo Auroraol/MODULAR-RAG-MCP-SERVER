@@ -1,8 +1,7 @@
-"""Cross-Encoder based Reranker implementation.
+"""基于 Cross-Encoder 的 Reranker 实现。
 
-This module implements reranking using Cross-Encoder models that directly score
-(query, passage) pairs. Supports both local models via sentence-transformers
-and API-based endpoints.
+本模块使用 Cross-Encoder 模型实现重排，直接对 (query, passage) 对打分。
+既支持通过 sentence-transformers 加载本地模型，也支持基于 API 的端点。
 """
 
 from __future__ import annotations
@@ -16,23 +15,22 @@ logger = logging.getLogger(__name__)
 
 
 class CrossEncoderRerankError(RuntimeError):
-    """Raised when Cross-Encoder reranking fails."""
+    """Cross-Encoder 重排失败时抛出。"""
 
 
 class CrossEncoderReranker(BaseReranker):
-    """Cross-Encoder based reranker for scoring query-passage pairs.
-    
-    This implementation uses Cross-Encoder models (e.g., ms-marco-MiniLM)
-    that directly encode and score (query, passage) pairs, providing more
-    accurate relevance scores than bi-encoder approaches at the cost of
-    higher computational requirements.
-    
-    Design Principles Applied:
-    - Pluggable: Can be swapped with other reranker implementations via factory.
-    - Config-Driven: Model name and parameters come from settings.yaml.
-    - Observable: Supports TraceContext for monitoring (Stage F integration).
-    - Fallback-Aware: Provides timeout/failure signals for upstream fallback.
-    - Deterministic Testing: Supports mock scorer injection for testing.
+    """基于 Cross-Encoder 的 Reranker，用于对 query-passage 对打分。
+
+    此实现使用 Cross-Encoder 模型（如 ms-marco-MiniLM），
+    直接编码并对 (query, passage) 对打分，相比 bi-encoder 方法
+    能提供更准确的相关性分数，但计算开销更高。
+
+    应用的设计原则：
+    - 可插拔：可通过工厂替换为其他 Reranker 实现。
+    - 配置驱动：模型名称与参数来自 settings.yaml。
+    - 可观测：支持 TraceContext 以进行监控（阶段 F 集成）。
+    - 可降级：为上游降级逻辑提供超时/失败信号。
+    - 确定性测试：支持注入 mock scorer 以便测试。
     """
     
     def __init__(
@@ -42,21 +40,21 @@ class CrossEncoderReranker(BaseReranker):
         timeout: float = 10.0,
         **kwargs: Any
     ) -> None:
-        """Initialize the Cross-Encoder Reranker.
-        
-        Args:
-            settings: Application settings containing rerank configuration.
-            model: Optional pre-initialized CrossEncoder model. If None, creates
-                from settings.rerank.model. Used for testing to inject mock models.
-            timeout: Maximum time (seconds) to wait for reranking. Default 10s.
-                Used to enable fallback strategies when reranking takes too long.
-            **kwargs: Additional provider-specific parameters.
+        """初始化 Cross-Encoder Reranker。
+
+        参数:
+            settings: 包含 rerank 配置的应用设置。
+            model: 可选的已初始化 CrossEncoder 模型。若为 None，则从
+                settings.rerank.model 创建。用于测试时注入 mock 模型。
+            timeout: 等待重排完成的最长时间（秒）。默认 10 秒。
+                用于在重排耗时过长时启用降级策略。
+            **kwargs: 额外的 provider 特定参数。
         """
         self.settings = settings
         self.timeout = timeout
         self.kwargs = kwargs
         
-        # Initialize or inject model
+        # 初始化或注入模型
         if model is not None:
             self.model = model
         else:
@@ -69,16 +67,16 @@ class CrossEncoderReranker(BaseReranker):
                 ) from e
     
     def _get_model_name_from_settings(self, settings: Any) -> str:
-        """Extract model name from settings.
-        
-        Args:
-            settings: Application settings.
-        
-        Returns:
-            Model name string.
-        
-        Raises:
-            AttributeError: If rerank.model is not configured.
+        """从配置中提取模型名称。
+
+        参数:
+            settings: 应用设置。
+
+        返回:
+            模型名称字符串。
+
+        异常:
+            AttributeError: 当 rerank.model 未配置时。
         """
         try:
             model_name = settings.rerank.model
@@ -92,17 +90,17 @@ class CrossEncoderReranker(BaseReranker):
             ) from e
     
     def _load_cross_encoder_model(self, model_name: str) -> Any:
-        """Load the Cross-Encoder model.
-        
-        Args:
-            model_name: Name or path of the Cross-Encoder model.
-        
-        Returns:
-            Initialized CrossEncoder instance.
-        
-        Raises:
-            ImportError: If sentence-transformers is not installed.
-            RuntimeError: If model loading fails.
+        """加载 Cross-Encoder 模型。
+
+        参数:
+            model_name: Cross-Encoder 模型的名称或路径。
+
+        返回:
+            已初始化的 CrossEncoder 实例。
+
+        异常:
+            ImportError: 当未安装 sentence-transformers 时。
+            RuntimeError: 当模型加载失败时。
         """
         try:
             from sentence_transformers import CrossEncoder
@@ -129,50 +127,50 @@ class CrossEncoderReranker(BaseReranker):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
-        """Rerank candidates using Cross-Encoder scoring.
-        
-        Args:
-            query: The user query string.
-            candidates: List of candidate records to rerank. Each must contain
-                either 'text' or 'content' field for scoring.
-            trace: Optional TraceContext for observability (Stage F integration).
-            **kwargs: Additional parameters (top_k to limit output, etc.).
-        
-        Returns:
-            Reranked list of candidates ordered by relevance score (descending).
-            Each candidate includes a 'rerank_score' field with the model's score.
-        
-        Raises:
-            ValueError: If query or candidates are invalid.
-            CrossEncoderRerankError: If scoring fails or times out.
+        """使用 Cross-Encoder 打分对候选进行重排。
+
+        参数:
+            query: 用户查询字符串。
+            candidates: 待重排的候选记录列表。每项必须包含
+                'text' 或 'content' 字段用于打分。
+            trace: 可选的 TraceContext，用于可观测性（阶段 F 集成）。
+            **kwargs: 额外参数（如 top_k 用于限制输出数量）。
+
+        返回:
+            按相关性分数降序排列的重排后候选列表。
+            每个候选会包含 'rerank_score' 字段，保存模型的分数。
+
+        异常:
+            ValueError: 当 query 或 candidates 无效时。
+            CrossEncoderRerankError: 当打分失败或超时时。
         """
-        # Validate inputs
+        # 校验输入
         self.validate_query(query)
         self.validate_candidates(candidates)
-        
-        # Extract top_k parameter
+
+        # 提取 top_k 参数
         top_k = kwargs.get("top_k", len(candidates))
         if not isinstance(top_k, int) or top_k < 1:
             raise ValueError(f"top_k must be a positive integer, got {top_k}")
-        
+
         try:
-            # Prepare (query, passage) pairs for scoring
+            # 准备用于打分的 (query, passage) 对
             pairs = self._prepare_pairs(query, candidates)
-            
-            # Score pairs using the model
+
+            # 使用模型对各个对进行打分
             scores = self._score_pairs(pairs, trace=trace)
-            
-            # Attach scores to candidates and sort
+
+            # 将分数附加到候选并排序
             reranked = self._attach_scores_and_sort(candidates, scores, top_k)
-            
+
             if trace:
                 self._log_trace(trace, query, len(candidates), len(reranked))
-            
+
             return reranked
-            
+
         except Exception as e:
             logger.error(f"Cross-Encoder reranking failed: {e}", exc_info=True)
-            # Signal failure for upstream fallback logic
+            # 为上游降级逻辑发出失败信号
             raise CrossEncoderRerankError(
                 f"Cross-Encoder reranking failed: {e}"
             ) from e
@@ -182,18 +180,18 @@ class CrossEncoderReranker(BaseReranker):
         query: str,
         candidates: List[Dict[str, Any]]
     ) -> List[tuple[str, str]]:
-        """Prepare (query, passage) pairs for scoring.
-        
-        Args:
-            query: The user query.
-            candidates: List of candidate records.
-        
-        Returns:
-            List of (query, passage_text) tuples.
+        """为打分准备 (query, passage) 对。
+
+        参数:
+            query: 用户查询。
+            candidates: 候选记录列表。
+
+        返回:
+            (query, passage_text) 元组列表。
         """
         pairs = []
         for candidate in candidates:
-            # Extract text from candidate (support both 'text' and 'content' keys)
+            # 从候选中提取文本（同时支持 'text' 和 'content' 键）
             text = candidate.get("text") or candidate.get("content", "")
             if not isinstance(text, str):
                 text = str(text)
@@ -205,23 +203,23 @@ class CrossEncoderReranker(BaseReranker):
         pairs: List[tuple[str, str]],
         trace: Optional[Any] = None
     ) -> List[float]:
-        """Score (query, passage) pairs using the Cross-Encoder model.
-        
-        Args:
-            pairs: List of (query, passage) tuples.
-            trace: Optional TraceContext for observability.
-        
-        Returns:
-            List of relevance scores (one per pair).
-        
-        Raises:
-            CrossEncoderRerankError: If scoring fails or times out.
+        """使用 Cross-Encoder 模型对 (query, passage) 对打分。
+
+        参数:
+            pairs: (query, passage) 元组列表。
+            trace: 可选的 TraceContext，用于可观测性。
+
+        返回:
+            相关性分数列表（每个对一个分数）。
+
+        异常:
+            CrossEncoderRerankError: 当打分失败或超时时。
         """
         try:
-            # Use model.predict() to score all pairs in batch
+            # 使用 model.predict() 批量对所有对打分
             scores = self.model.predict(pairs)
-            
-            # Convert numpy array to list if needed
+
+            # 必要时将 numpy 数组转换为列表
             if hasattr(scores, 'tolist'):
                 scores = scores.tolist()
             
@@ -238,25 +236,25 @@ class CrossEncoderReranker(BaseReranker):
         scores: List[float],
         top_k: int
     ) -> List[Dict[str, Any]]:
-        """Attach scores to candidates and sort by relevance.
-        
-        Args:
-            candidates: Original candidate list.
-            scores: Relevance scores from the model.
-            top_k: Number of top candidates to return.
-        
-        Returns:
-            Sorted list of top_k candidates with 'rerank_score' field added.
+        """将分数附加到候选并按相关性排序。
+
+        参数:
+            candidates: 原始候选列表。
+            scores: 模型给出的相关性分数。
+            top_k: 返回的候选数量上限。
+
+        返回:
+            排序后的前 top_k 个候选列表，并新增 'rerank_score' 字段。
         """
-        # Attach scores to candidates
+        # 将分数附加到候选
         scored_candidates = []
         for candidate, score in zip(candidates, scores):
-            # Create a copy to avoid modifying original
+            # 创建副本以避免修改原始数据
             candidate_copy = candidate.copy()
             candidate_copy["rerank_score"] = float(score)
             scored_candidates.append(candidate_copy)
-        
-        # Sort by score (descending) and take top_k
+
+        # 按分数降序排序并取前 top_k 个
         sorted_candidates = sorted(
             scored_candidates,
             key=lambda x: x["rerank_score"],
@@ -272,16 +270,16 @@ class CrossEncoderReranker(BaseReranker):
         input_count: int,
         output_count: int
     ) -> None:
-        """Log reranking operation to trace context.
-        
-        Args:
-            trace: TraceContext instance.
-            query: The query string.
-            input_count: Number of input candidates.
-            output_count: Number of output candidates.
+        """将重排操作记录到 trace 上下文。
+
+        参数:
+            trace: TraceContext 实例。
+            query: 查询字符串。
+            input_count: 输入候选数量。
+            output_count: 输出候选数量。
         """
-        # Placeholder for Stage F integration
-        # Future: trace.log_rerank_step(...)
+        # 阶段 F 集成的占位
+        # 未来：trace.log_rerank_step(...)
         logger.debug(
             f"Cross-Encoder rerank: query='{query[:50]}...', "
             f"input={input_count}, output={output_count}"

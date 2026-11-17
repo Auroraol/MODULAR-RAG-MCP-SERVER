@@ -1,12 +1,12 @@
-# Output Patterns
+# 输出模式
 
-Use these patterns when skills need to produce consistent, high-quality output.
+当技能需要产生一致、高质量的输出时，使用这些模式。
 
-## Template Pattern
+## 模板模式
 
-Provide templates for output format. Match the level of strictness to your needs.
+为输出格式提供模板。让严格程度与你的需求相匹配。
 
-**For strict requirements (like API responses or data formats):**
+**对于严格要求（如 API 响应或数据格式）：**
 
 ```markdown
 ## Report structure
@@ -28,7 +28,7 @@ ALWAYS use this exact template structure:
 2. Specific actionable recommendation
 ```
 
-**For flexible guidance (when adaptation is useful):**
+**对于灵活指导（当适应性有价值时）：**
 
 ```markdown
 ## Report structure
@@ -49,9 +49,9 @@ Here is a sensible default format, but use your best judgment:
 Adjust sections as needed for the specific analysis type.
 ```
 
-## Examples Pattern
+## 示例模式
 
-For skills where output quality depends on seeing examples, provide input/output pairs:
+对于输出质量依赖于查看示例的技能，提供输入/输出对：
 
 ```markdown
 ## Commit message format
@@ -75,4 +75,4 @@ Use UTC timestamps consistently across report generation
 Follow this style: type(scope): brief description, then detailed explanation.
 ```
 
-Examples help the agent understand the desired style and level of detail more clearly than descriptions alone.
+与仅靠描述相比，示例能帮助 agent 更清晰地理解期望的风格和详细程度。

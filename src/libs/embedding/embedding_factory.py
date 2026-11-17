@@ -1,8 +1,7 @@
-"""Factory for creating Embedding provider instances.
+"""用于创建 Embedding Provider 实例的工厂。
 
-This module implements the Factory Pattern to instantiate the appropriate
-Embedding provider based on configuration, enabling configuration-driven selection
-of different backends without code changes.
+本模块实现工厂模式，根据配置实例化相应的 Embedding Provider，
+从而无需修改代码即可通过配置驱动选择不同后端。
 """
 
 from __future__ import annotations
@@ -16,34 +15,32 @@ if TYPE_CHECKING:
 
 
 class EmbeddingFactory:
-    """Factory for creating Embedding provider instances.
-    
-    This factory reads the provider configuration from settings and instantiates
-    the corresponding Embedding implementation. Supported providers: OpenAI, Azure,
-    and more to be added in subsequent tasks.
-    
-    Design Principles Applied:
-    - Factory Pattern: Centralizes object creation logic.
-    - Config-Driven: Provider selection based on settings.yaml.
-    - Fail-Fast: Raises clear errors for unknown providers.
+    """用于创建 Embedding Provider 实例的工厂。
+
+    本工厂从 settings 读取 Provider 配置并实例化相应的 Embedding 实现。
+    当前支持的 Provider 有 OpenAI、Azure，后续任务还会添加更多。
+
+    应用的设计原则：
+    - 工厂模式：集中对象创建逻辑。
+    - 配置驱动：根据 settings.yaml 选择 Provider。
+    - 快速失败：对未知 Provider 抛出明确的错误。
     """
-    
-    # Registry of supported providers
+
+    # 受支持 Provider 的注册表
     _PROVIDERS: dict[str, type[BaseEmbedding]] = {}
     
     @classmethod
     def register_provider(cls, name: str, provider_class: type[BaseEmbedding]) -> None:
-        """Register a new Embedding provider implementation.
-        
-        This method allows provider implementations to register themselves
-        with the factory, supporting extensibility.
-        
-        Args:
-            name: The provider identifier (e.g., 'openai', 'azure', 'local').
-            provider_class: The BaseEmbedding subclass implementing the provider.
-        
-        Raises:
-            ValueError: If provider_class doesn't inherit from BaseEmbedding.
+        """注册一个新的 Embedding Provider 实现。
+
+        该方法允许各 Provider 实现向工厂自行注册，以支持可扩展性。
+
+        参数:
+            name: Provider 标识符（例如 'openai'、'azure'、'local'）。
+            provider_class: 实现该 Provider 的 BaseEmbedding 子类。
+
+        异常:
+            ValueError: 当 provider_class 未继承 BaseEmbedding 时抛出。
         """
         if not issubclass(provider_class, BaseEmbedding):
             raise ValueError(
@@ -53,25 +50,25 @@ class EmbeddingFactory:
     
     @classmethod
     def create(cls, settings: Settings, **override_kwargs: Any) -> BaseEmbedding:
-        """Create an Embedding instance based on configuration.
-        
-        Args:
-            settings: The application settings containing Embedding configuration.
-            **override_kwargs: Optional parameters to override config values.
-        
-        Returns:
-            An instance of the configured Embedding provider.
-        
-        Raises:
-            ValueError: If the configured provider is not supported.
-            AttributeError: If required configuration fields are missing.
-        
-        Example:
+        """根据配置创建 Embedding 实例。
+
+        参数:
+            settings: 包含 Embedding 配置的应用配置。
+            **override_kwargs: 用于覆盖配置值的可选参数。
+
+        返回:
+            配置的 Embedding Provider 实例。
+
+        异常:
+            ValueError: 当配置的 Provider 不受支持时抛出。
+            AttributeError: 当缺少必需的配置字段时抛出。
+
+        示例:
             >>> settings = Settings.load('config/settings.yaml')
             >>> embedding = EmbeddingFactory.create(settings)
             >>> vectors = embedding.embed(["hello world", "test"])
         """
-        # Extract provider name from settings
+        # 从 settings 中提取 Provider 名称
         try:
             provider_name = settings.embedding.provider.lower()
         except AttributeError as e:
@@ -80,7 +77,7 @@ class EmbeddingFactory:
                 "Please ensure 'embedding.provider' is specified in settings.yaml"
             ) from e
         
-        # Look up provider class in registry
+        # 在注册表中查找 Provider 类
         provider_class = cls._PROVIDERS.get(provider_name)
         
         if provider_class is None:
@@ -90,8 +87,8 @@ class EmbeddingFactory:
                 f"Available providers: {available}"
             )
         
-        # Instantiate the provider
-        # Provider classes should accept settings and optional kwargs
+        # 实例化 Provider
+        # Provider 类应接受 settings 和可选的 kwargs
         try:
             return provider_class(settings=settings, **override_kwargs)
         except Exception as e:
@@ -101,35 +98,35 @@ class EmbeddingFactory:
     
     @classmethod
     def list_providers(cls) -> list[str]:
-        """List all registered provider names.
-        
-        Returns:
-            Sorted list of available provider identifiers.
+        """列出所有已注册的 Provider 名称。
+
+        返回:
+            可用 Provider 标识符的排序列表。
         """
         return sorted(cls._PROVIDERS.keys())
 
 
-# Auto-register providers on module import
+# 在模块导入时自动注册 Provider
 def _register_builtin_providers() -> None:
-    """Register built-in Embedding providers with the factory."""
+    """向工厂注册内置的 Embedding Provider。"""
     try:
         from src.libs.embedding.openai_embedding import OpenAIEmbedding
         EmbeddingFactory.register_provider("openai", OpenAIEmbedding)
     except ImportError:
-        pass  # OpenAI provider not available
-    
+        pass  # OpenAI Provider 不可用
+
     try:
         from src.libs.embedding.azure_embedding import AzureEmbedding
         EmbeddingFactory.register_provider("azure", AzureEmbedding)
     except ImportError:
-        pass  # Azure provider not available
-    
+        pass  # Azure Provider 不可用
+
     try:
         from src.libs.embedding.ollama_embedding import OllamaEmbedding
         EmbeddingFactory.register_provider("ollama", OllamaEmbedding)
     except ImportError:
-        pass  # Ollama provider not available
+        pass  # Ollama Provider 不可用
 
 
-# Register providers when module is imported
+# 模块被导入时注册 Provider
 _register_builtin_providers()

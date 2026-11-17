@@ -1,10 +1,9 @@
-"""Factory for creating LLM provider instances.
+"""用于创建 LLM Provider 实例的工厂。
 
-This module implements the Factory Pattern to instantiate the appropriate
-LLM provider based on configuration, enabling configuration-driven selection
-of different backends without code changes.
+本模块实现工厂模式，根据配置实例化合适的 LLM Provider，
+从而实现无需改动代码、由配置驱动地选择不同后端。
 
-Supports both text-only LLMs and Vision LLMs (multimodal).
+同时支持纯文本 LLM 与 Vision LLM（多模态）。
 """
 
 from __future__ import annotations
@@ -18,20 +17,19 @@ if TYPE_CHECKING:
     from src.core.settings import Settings
 
 
-# Import and register Vision LLM providers at module load time
+# 在模块加载时导入并注册 Vision LLM Provider
 def _register_vision_providers() -> None:
-    """Register all Vision LLM provider implementations.
-    
-    This function is called at module import time to populate the
-    Vision LLM provider registry. Add new providers here as they
-    are implemented.
+    """注册所有 Vision LLM Provider 实现。
+
+    该函数在模块导入时调用，用于填充
+    Vision LLM Provider 注册表。新 Provider 实现后在此处添加。
     """
     try:
         from src.libs.llm.azure_vision_llm import AzureVisionLLM
         from src.libs.llm.llm_factory import LLMFactory
         LLMFactory.register_vision_provider("azure", AzureVisionLLM)
     except ImportError:
-        # Provider not yet implemented, skip registration
+        # Provider 尚未实现，跳过注册
         pass
     
     try:
@@ -43,38 +41,37 @@ def _register_vision_providers() -> None:
 
 
 class LLMFactory:
-    """Factory for creating LLM provider instances.
-    
-    This factory reads the provider configuration from settings and instantiates
-    the corresponding LLM implementation. Supports both text-only LLMs and
-    Vision LLMs (multimodal).
-    
-    Design Principles Applied:
-    - Factory Pattern: Centralizes object creation logic.
-    - Config-Driven: Provider selection based on settings.yaml.
-    - Fail-Fast: Raises clear errors for unknown providers.
-    - Separation: Text and Vision LLM registries are separate.
+    """用于创建 LLM Provider 实例的工厂。
+
+    该工厂从 settings 读取 Provider 配置并实例化对应的 LLM 实现。
+    同时支持纯文本 LLM 与 Vision LLM（多模态）。
+
+    遵循的设计原则:
+    - 工厂模式: 集中管理对象创建逻辑。
+    - 配置驱动: 根据 settings.yaml 选择 Provider。
+    - 快速失败: 对未知 Provider 抛出明确错误。
+    - 分离: 文本与 Vision LLM 注册表彼此独立。
     """
-    
-    # Registry of supported text-only LLM providers (to be populated in B7.x tasks)
+
+    # 支持的纯文本 LLM Provider 注册表（将在 B7.x 任务中填充）
     _PROVIDERS: dict[str, type[BaseLLM]] = {}
-    
-    # Registry of supported Vision LLM providers (to be populated in B9+ tasks)
+
+    # 支持的 Vision LLM Provider 注册表（将在 B9+ 任务中填充）
     _VISION_PROVIDERS: dict[str, type[BaseVisionLLM]] = {}
     
     @classmethod
     def register_provider(cls, name: str, provider_class: type[BaseLLM]) -> None:
-        """Register a new LLM provider implementation.
-        
-        This method allows provider implementations to register themselves
-        with the factory, supporting extensibility.
-        
-        Args:
-            name: The provider identifier (e.g., 'openai', 'azure', 'ollama').
-            provider_class: The BaseLLM subclass implementing the provider.
-        
-        Raises:
-            ValueError: If provider_class doesn't inherit from BaseLLM.
+        """注册一个新的 LLM Provider 实现。
+
+        该方法允许各 Provider 实现向工厂注册自身，
+        从而支持可扩展性。
+
+        参数:
+            name: Provider 标识符（例如 'openai'、'azure'、'ollama'）。
+            provider_class: 实现该 Provider 的 BaseLLM 子类。
+
+        异常:
+            ValueError: provider_class 未继承 BaseLLM 时抛出。
         """
         if not issubclass(provider_class, BaseLLM):
             raise ValueError(
@@ -84,25 +81,25 @@ class LLMFactory:
     
     @classmethod
     def create(cls, settings: Settings, **override_kwargs: Any) -> BaseLLM:
-        """Create an LLM instance based on configuration.
-        
-        Args:
-            settings: The application settings containing LLM configuration.
-            **override_kwargs: Optional parameters to override config values.
-        
-        Returns:
-            An instance of the configured LLM provider.
-        
-        Raises:
-            ValueError: If the configured provider is not supported.
-            AttributeError: If required configuration fields are missing.
-        
-        Example:
+        """根据配置创建 LLM 实例。
+
+        参数:
+            settings: 包含 LLM 配置的应用设置。
+            **override_kwargs: 用于覆盖配置值的可选参数。
+
+        返回:
+            已配置的 LLM Provider 实例。
+
+        异常:
+            ValueError: 配置的 Provider 不被支持时抛出。
+            AttributeError: 缺少必需的配置字段时抛出。
+
+        示例:
             >>> settings = Settings.load('config/settings.yaml')
             >>> llm = LLMFactory.create(settings)
             >>> response = llm.chat([Message(role='user', content='Hello')])
         """
-        # Extract provider name from settings
+        # 从 settings 中提取 Provider 名称
         try:
             provider_name = settings.llm.provider.lower()
         except AttributeError as e:
@@ -111,7 +108,7 @@ class LLMFactory:
                 "Please ensure 'llm.provider' is specified in settings.yaml"
             ) from e
         
-        # Look up provider class in registry
+        # 在注册表中查找 Provider 类
         provider_class = cls._PROVIDERS.get(provider_name)
         
         if provider_class is None:
@@ -122,8 +119,8 @@ class LLMFactory:
                 f"Provider implementations will be added in tasks B7.1-B7.2."
             )
         
-        # Instantiate the provider
-        # Provider classes should accept settings and optional kwargs
+        # 实例化 Provider
+        # Provider 类应接受 settings 以及可选的 kwargs
         try:
             return provider_class(settings=settings, **override_kwargs)
         except Exception as e:
@@ -133,10 +130,10 @@ class LLMFactory:
     
     @classmethod
     def list_providers(cls) -> list[str]:
-        """List all registered provider names.
-        
-        Returns:
-            Sorted list of available provider identifiers.
+        """列出所有已注册的 Provider 名称。
+
+        返回:
+            可用 Provider 标识符的排序列表。
         """
         return sorted(cls._PROVIDERS.keys())
     
@@ -146,17 +143,17 @@ class LLMFactory:
         name: str,
         provider_class: type[BaseVisionLLM]
     ) -> None:
-        """Register a new Vision LLM provider implementation.
-        
-        This method allows Vision LLM provider implementations to register
-        themselves with the factory, supporting extensibility.
-        
-        Args:
-            name: The provider identifier (e.g., 'azure', 'ollama').
-            provider_class: The BaseVisionLLM subclass implementing the provider.
-        
-        Raises:
-            ValueError: If provider_class doesn't inherit from BaseVisionLLM.
+        """注册一个新的 Vision LLM Provider 实现。
+
+        该方法允许各 Vision LLM Provider 实现向工厂注册自身，
+        从而支持可扩展性。
+
+        参数:
+            name: Provider 标识符（例如 'azure'、'ollama'）。
+            provider_class: 实现该 Provider 的 BaseVisionLLM 子类。
+
+        异常:
+            ValueError: provider_class 未继承 BaseVisionLLM 时抛出。
         """
         if not issubclass(provider_class, BaseVisionLLM):
             raise ValueError(
@@ -170,36 +167,35 @@ class LLMFactory:
         settings: Settings,
         **override_kwargs: Any
     ) -> BaseVisionLLM:
-        """Create a Vision LLM instance based on configuration.
-        
-        Vision LLMs support multimodal input (text + image) and are used for
-        tasks like image captioning, visual question answering, and document
-        understanding with embedded images.
-        
-        Args:
-            settings: The application settings containing Vision LLM configuration.
-            **override_kwargs: Optional parameters to override config values.
-        
-        Returns:
-            An instance of the configured Vision LLM provider.
-        
-        Raises:
-            ValueError: If the configured provider is not supported or configuration is missing.
-            RuntimeError: If provider instantiation fails.
-        
-        Example:
+        """根据配置创建 Vision LLM 实例。
+
+        Vision LLM 支持多模态输入（文本 + 图像），用于
+        图像描述、视觉问答以及含嵌入图像的文档理解等任务。
+
+        参数:
+            settings: 包含 Vision LLM 配置的应用设置。
+            **override_kwargs: 用于覆盖配置值的可选参数。
+
+        返回:
+            已配置的 Vision LLM Provider 实例。
+
+        异常:
+            ValueError: 配置的 Provider 不被支持或缺少配置时抛出。
+            RuntimeError: Provider 实例化失败时抛出。
+
+        示例:
             >>> settings = Settings.load('config/settings.yaml')
             >>> vision_llm = LLMFactory.create_vision_llm(settings)
             >>> image = ImageInput(path="diagram.png")
             >>> response = vision_llm.chat_with_image("Describe this", image)
         """
-        # Extract provider name from settings
-        # Vision LLM config may be nested under settings.vision_llm or settings.llm
+        # 从 settings 中提取 Provider 名称
+        # Vision LLM 配置可能嵌套在 settings.vision_llm 或 settings.llm 下
         try:
-            # Try vision_llm section first
+            # 优先尝试 vision_llm 配置段
             if hasattr(settings, 'vision_llm') and hasattr(settings.vision_llm, 'provider'):
                 provider_name = settings.vision_llm.provider.lower()
-            # Fallback to llm.provider (some providers support both text and vision)
+            # 回退到 llm.provider（部分 Provider 同时支持文本与视觉）
             elif hasattr(settings, 'llm') and hasattr(settings.llm, 'provider'):
                 provider_name = settings.llm.provider.lower()
             else:
@@ -210,7 +206,7 @@ class LLMFactory:
                 "Please ensure 'vision_llm.provider' or 'llm.provider' is specified in settings.yaml"
             ) from e
         
-        # Look up provider class in vision registry
+        # 在 vision 注册表中查找 Provider 类
         provider_class = cls._VISION_PROVIDERS.get(provider_name)
         
         if provider_class is None:
@@ -221,7 +217,7 @@ class LLMFactory:
                 f"Vision LLM implementations will be added in tasks B9+."
             )
         
-        # Instantiate the provider
+        # 实例化 Provider
         try:
             return provider_class(settings=settings, **override_kwargs)
         except Exception as e:
@@ -231,13 +227,13 @@ class LLMFactory:
     
     @classmethod
     def list_vision_providers(cls) -> list[str]:
-        """List all registered Vision LLM provider names.
-        
-        Returns:
-            Sorted list of available Vision LLM provider identifiers.
+        """列出所有已注册的 Vision LLM Provider 名称。
+
+        返回:
+            可用 Vision LLM Provider 标识符的排序列表。
         """
         return sorted(cls._VISION_PROVIDERS.keys())
 
 
-# Register Vision LLM providers at module load time
+# 在模块加载时注册 Vision LLM Provider
 _register_vision_providers()

@@ -1,12 +1,12 @@
 """
-Query Engine Module.
+Query Engine 模块。
 
-This package contains the hybrid search engine components:
-- Query preprocessing
-- Dense retrieval (embedding-based)
-- Sparse retrieval (BM25)
-- Result fusion (RRF)
-- Reranking
+本包包含混合检索引擎的各个组件：
+- 查询预处理
+- 稠密检索（基于 Embedding）
+- 稀疏检索（BM25）
+- 结果融合（RRF）
+- 重排序
 """
 
 from src.core.query_engine.query_processor import (

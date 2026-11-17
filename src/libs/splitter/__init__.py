@@ -1,16 +1,16 @@
 """
-Splitter Module.
+Splitter 模块。
 
-This package contains text splitter abstractions and implementations:
-- Base splitter class
-- Splitter factory
-- Implementations (Recursive, Semantic, FixedLength)
+本包包含文本切分器抽象与实现：
+- 切分器基类
+- 切分器工厂
+- 具体实现（Recursive、Semantic、FixedLength）
 """
 
 from src.libs.splitter.base_splitter import BaseSplitter
 from src.libs.splitter.splitter_factory import SplitterFactory
 
-# Import concrete implementations (they auto-register with factory)
+# 导入具体实现（它们会自动向工厂注册）
 try:
     from src.libs.splitter.recursive_splitter import RecursiveSplitter
 except ImportError:

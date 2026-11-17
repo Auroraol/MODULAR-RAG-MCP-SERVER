@@ -1,10 +1,10 @@
-"""Unit tests for CoreReranker fallback behavior.
+"""CoreReranker 回退行为的单元测试。
 
-This module tests the CoreReranker class with focus on:
-1. Normal reranking flow with mocked backend
-2. Fallback behavior when backend fails
-3. Configuration handling
-4. Type conversion between RetrievalResult and reranker format
+本模块测试 CoreReranker 类，重点包括：
+1. 使用 mock 后端的正常重排序流程
+2. 后端失败时的回退行为
+3. 配置处理
+4. RetrievalResult 与 reranker 格式之间的类型转换
 """
 
 import pytest
@@ -23,11 +23,11 @@ from src.libs.reranker.base_reranker import BaseReranker, NoneReranker
 
 
 # =============================================================================
-# Fixtures
+# 夹具
 # =============================================================================
 
 class MockSettings:
-    """Mock Settings class for testing."""
+    """用于测试的 mock Settings 类。"""
     
     def __init__(
         self,
@@ -42,7 +42,7 @@ class MockSettings:
 
 
 class FakeReranker(BaseReranker):
-    """Fake reranker that returns candidates in reverse order."""
+    """按相反顺序返回候选的伪 reranker。"""
     
     def __init__(self, settings: Any = None, **kwargs: Any):
         self.call_count = 0
@@ -60,18 +60,18 @@ class FakeReranker(BaseReranker):
         self.last_query = query
         self.last_candidates = candidates
         
-        # Reverse order and add rerank_score
+        # 反转顺序并添加 rerank_score
         reranked = []
         for i, candidate in enumerate(reversed(candidates)):
             candidate_copy = candidate.copy()
-            candidate_copy["rerank_score"] = 3.0 - i * 0.5  # Descending scores
+            candidate_copy["rerank_score"] = 3.0 - i * 0.5  # 分数递减
             reranked.append(candidate_copy)
         
         return reranked
 
 
 class FailingReranker(BaseReranker):
-    """Reranker that always fails."""
+    """总是失败的 Reranker。"""
     
     def __init__(self, settings: Any = None, error_message: str = "Reranker failed", **kwargs: Any):
         self.error_message = error_message
@@ -88,13 +88,13 @@ class FailingReranker(BaseReranker):
 
 @pytest.fixture
 def mock_settings():
-    """Create mock settings for testing."""
+    """创建用于测试的 mock 配置。"""
     return MockSettings(enabled=True, provider="llm", top_k=5)
 
 
 @pytest.fixture
 def sample_results():
-    """Create sample RetrievalResults for testing."""
+    """创建用于测试的示例 RetrievalResult。"""
     return [
         RetrievalResult(
             chunk_id="chunk_001",
@@ -117,15 +117,14 @@ def sample_results():
     ]
 
 
-# =============================================================================
-# Test: Initialization
+# 测试：初始化
 # =============================================================================
 
 class TestCoreRerankerInit:
-    """Test CoreReranker initialization."""
-    
+    """CoreReranker 初始化的测试。"""
+
     def test_init_with_custom_reranker(self, mock_settings):
-        """Test initialization with custom reranker backend."""
+        """测试使用自定义 reranker 后端初始化。"""
         fake_reranker = FakeReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=fake_reranker)
         
@@ -133,7 +132,7 @@ class TestCoreRerankerInit:
         assert reranker.reranker_type == "fakereranker"
     
     def test_init_with_disabled_config(self):
-        """Test initialization with disabled reranking."""
+        """测试禁用重排序时的初始化。"""
         settings = MockSettings(enabled=False, provider="none")
         reranker = CoreReranker(settings=settings)
         
@@ -142,7 +141,7 @@ class TestCoreRerankerInit:
         assert not reranker.is_enabled
     
     def test_init_with_custom_config(self, mock_settings):
-        """Test initialization with custom RerankConfig."""
+        """测试使用自定义 RerankConfig 初始化。"""
         config = RerankConfig(enabled=True, top_k=10, timeout=60.0)
         fake_reranker = FakeReranker()
         reranker = CoreReranker(
@@ -155,7 +154,7 @@ class TestCoreRerankerInit:
         assert reranker.config.timeout == 60.0
     
     def test_init_extracts_config_from_settings(self, mock_settings):
-        """Test that config is extracted from settings when not provided."""
+        """测试未提供时从 settings 提取 config。"""
         fake_reranker = FakeReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=fake_reranker)
         
@@ -163,15 +162,14 @@ class TestCoreRerankerInit:
         assert reranker.config.top_k == 5
 
 
-# =============================================================================
-# Test: Normal Reranking Flow
+# 测试：正常重排序流程
 # =============================================================================
 
 class TestCoreRerankerNormalFlow:
-    """Test normal reranking flow."""
-    
+    """正常重排序流程的测试。"""
+
     def test_rerank_calls_backend(self, mock_settings, sample_results):
-        """Test that reranking calls the backend reranker."""
+        """测试重排序调用后端 reranker。"""
         fake_reranker = FakeReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=fake_reranker)
         
@@ -182,7 +180,7 @@ class TestCoreRerankerNormalFlow:
         assert len(fake_reranker.last_candidates) == 3
     
     def test_rerank_returns_reranked_results(self, mock_settings, sample_results):
-        """Test that reranked results are returned correctly."""
+        """测试正确返回重排序后的结果。"""
         fake_reranker = FakeReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=fake_reranker)
         
@@ -194,20 +192,20 @@ class TestCoreRerankerNormalFlow:
         assert result.reranker_type == "fakereranker"
     
     def test_rerank_preserves_original_data(self, mock_settings, sample_results):
-        """Test that original result data is preserved."""
+        """测试保留原始结果数据。"""
         fake_reranker = FakeReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=fake_reranker)
         
         result = reranker.rerank("test query", sample_results)
         
-        # FakeReranker reverses order, so first result should be chunk_003
+        # FakeReranker 会反转顺序，因此首个结果应是 chunk_003
         first = result.results[0]
         assert first.chunk_id == "chunk_003"
         assert first.text == "Third chunk about neural networks."
         assert first.metadata["source_path"] == "doc2.pdf"
     
     def test_rerank_adds_score_metadata(self, mock_settings, sample_results):
-        """Test that rerank scores are added to metadata."""
+        """测试将重排序分数添加到 metadata。"""
         fake_reranker = FakeReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=fake_reranker)
         
@@ -219,7 +217,7 @@ class TestCoreRerankerNormalFlow:
         assert first.metadata["reranked"] is True
     
     def test_rerank_respects_top_k(self, mock_settings, sample_results):
-        """Test that top_k limits results."""
+        """测试 top_k 限制结果数量。"""
         fake_reranker = FakeReranker()
         config = RerankConfig(enabled=True, top_k=2)
         reranker = CoreReranker(
@@ -233,7 +231,7 @@ class TestCoreRerankerNormalFlow:
         assert len(result.results) == 2
     
     def test_rerank_explicit_top_k_overrides_config(self, mock_settings, sample_results):
-        """Test that explicit top_k parameter overrides config."""
+        """测试显式 top_k 参数覆盖配置。"""
         fake_reranker = FakeReranker()
         config = RerankConfig(enabled=True, top_k=5)
         reranker = CoreReranker(
@@ -247,15 +245,14 @@ class TestCoreRerankerNormalFlow:
         assert len(result.results) == 1
 
 
-# =============================================================================
-# Test: Fallback Behavior
+# 测试：回退行为
 # =============================================================================
 
 class TestCoreRerankerFallback:
-    """Test fallback behavior when backend fails."""
-    
+    """后端失败时的回退行为测试。"""
+
     def test_fallback_on_backend_error(self, mock_settings, sample_results):
-        """Test that fallback returns original order on error."""
+        """测试出错时回退返回原始顺序。"""
         failing_reranker = FailingReranker(error_message="Backend crashed")
         reranker = CoreReranker(settings=mock_settings, reranker=failing_reranker)
         
@@ -266,7 +263,7 @@ class TestCoreRerankerFallback:
         assert len(result.results) == 3
     
     def test_fallback_preserves_original_order(self, mock_settings, sample_results):
-        """Test that fallback preserves original order."""
+        """测试回退保持原始顺序。"""
         failing_reranker = FailingReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=failing_reranker)
         
@@ -277,7 +274,7 @@ class TestCoreRerankerFallback:
         assert result.results[2].chunk_id == "chunk_003"
     
     def test_fallback_marks_results(self, mock_settings, sample_results):
-        """Test that fallback results are marked appropriately."""
+        """测试回退结果被正确标记。"""
         failing_reranker = FailingReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=failing_reranker)
         
@@ -288,7 +285,7 @@ class TestCoreRerankerFallback:
             assert r.metadata.get("rerank_fallback") is True
     
     def test_fallback_respects_top_k(self, mock_settings, sample_results):
-        """Test that fallback respects top_k."""
+        """测试回退遵循 top_k。"""
         failing_reranker = FailingReranker()
         config = RerankConfig(enabled=True, top_k=2, fallback_on_error=True)
         reranker = CoreReranker(
@@ -302,7 +299,7 @@ class TestCoreRerankerFallback:
         assert len(result.results) == 2
     
     def test_fallback_disabled_raises_error(self, mock_settings, sample_results):
-        """Test that error is raised when fallback is disabled."""
+        """测试禁用回退时抛出错误。"""
         failing_reranker = FailingReranker()
         config = RerankConfig(enabled=True, top_k=5, fallback_on_error=False)
         reranker = CoreReranker(
@@ -317,7 +314,7 @@ class TestCoreRerankerFallback:
         assert "fallback disabled" in str(exc_info.value)
     
     def test_stores_original_order_on_fallback(self, mock_settings, sample_results):
-        """Test that original order is stored in result."""
+        """测试回退时原始顺序被存储。"""
         failing_reranker = FailingReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=failing_reranker)
         
@@ -327,15 +324,14 @@ class TestCoreRerankerFallback:
         assert len(result.original_order) == 3
 
 
-# =============================================================================
-# Test: Edge Cases
+# 测试：边界情况
 # =============================================================================
 
 class TestCoreRerankerEdgeCases:
-    """Test edge cases."""
-    
+    """边界情况的测试。"""
+
     def test_empty_results(self, mock_settings):
-        """Test handling of empty results."""
+        """测试空结果的处理。"""
         fake_reranker = FakeReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=fake_reranker)
         
@@ -343,10 +339,10 @@ class TestCoreRerankerEdgeCases:
         
         assert result.results == []
         assert result.used_fallback is False
-        assert fake_reranker.call_count == 0  # Should not call backend
-    
+        assert fake_reranker.call_count == 0  # 不应调用后端
+
     def test_single_result(self, mock_settings):
-        """Test handling of single result."""
+        """测试单个结果的处理。"""
         fake_reranker = FakeReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=fake_reranker)
         
@@ -361,10 +357,10 @@ class TestCoreRerankerEdgeCases:
         
         assert len(result.results) == 1
         assert result.results[0].chunk_id == "only_one"
-        assert fake_reranker.call_count == 0  # Should not call backend for single result
-    
+        assert fake_reranker.call_count == 0  # 单个结果不应调用后端
+
     def test_disabled_reranking(self, sample_results):
-        """Test that disabled reranking returns original order."""
+        """测试禁用重排序时返回原始顺序。"""
         settings = MockSettings(enabled=False, provider="none")
         reranker = CoreReranker(settings=settings)
         
@@ -375,7 +371,7 @@ class TestCoreRerankerEdgeCases:
         assert result.used_fallback is False
     
     def test_none_reranker_returns_top_k(self, sample_results):
-        """Test that NoneReranker returns top_k results."""
+        """测试 NoneReranker 返回 top_k 个结果。"""
         settings = MockSettings(enabled=False, provider="none", top_k=2)
         reranker = CoreReranker(settings=settings)
         
@@ -384,15 +380,14 @@ class TestCoreRerankerEdgeCases:
         assert len(result.results) == 2
 
 
-# =============================================================================
-# Test: Type Conversion
+# 测试：类型转换
 # =============================================================================
 
 class TestTypeConversion:
-    """Test type conversion between RetrievalResult and reranker format."""
-    
+    """RetrievalResult 与 reranker 格式之间的类型转换测试。"""
+
     def test_results_to_candidates(self, mock_settings, sample_results):
-        """Test conversion from RetrievalResult to candidate dict."""
+        """测试从 RetrievalResult 到候选字典的转换。"""
         reranker = CoreReranker(
             settings=mock_settings,
             reranker=FakeReranker(),
@@ -407,7 +402,7 @@ class TestTypeConversion:
         assert "source_path" in candidates[0]["metadata"]
     
     def test_candidates_to_results(self, mock_settings, sample_results):
-        """Test conversion from candidate dict back to RetrievalResult."""
+        """测试从候选字典回到 RetrievalResult 的转换。"""
         reranker = CoreReranker(
             settings=mock_settings,
             reranker=FakeReranker(),
@@ -426,15 +421,14 @@ class TestTypeConversion:
         assert results[0].metadata.get("original_score") == 0.9
 
 
-# =============================================================================
-# Test: Factory Function
+# 测试：工厂函数
 # =============================================================================
 
 class TestCreateCoreReranker:
-    """Test create_core_reranker factory function."""
-    
+    """create_core_reranker 工厂函数的测试。"""
+
     def test_creates_reranker(self, mock_settings):
-        """Test that factory creates CoreReranker."""
+        """测试工厂创建 CoreReranker。"""
         fake_reranker = FakeReranker()
         reranker = create_core_reranker(mock_settings, reranker=fake_reranker)
         
@@ -442,22 +436,21 @@ class TestCreateCoreReranker:
         assert reranker._reranker is fake_reranker
 
 
-# =============================================================================
-# Test: Properties
+# 测试：属性
 # =============================================================================
 
 class TestCoreRerankerProperties:
-    """Test CoreReranker properties."""
-    
+    """CoreReranker 属性的测试。"""
+
     def test_reranker_type_property(self, mock_settings):
-        """Test reranker_type property."""
+        """测试 reranker_type 属性。"""
         fake_reranker = FakeReranker()
         reranker = CoreReranker(settings=mock_settings, reranker=fake_reranker)
         
         assert reranker.reranker_type == "fakereranker"
     
     def test_is_enabled_true(self, mock_settings):
-        """Test is_enabled returns True when enabled."""
+        """测试启用时 is_enabled 返回 True。"""
         fake_reranker = FakeReranker()
         config = RerankConfig(enabled=True)
         reranker = CoreReranker(
@@ -469,19 +462,19 @@ class TestCoreRerankerProperties:
         assert reranker.is_enabled is True
     
     def test_is_enabled_false_when_disabled(self):
-        """Test is_enabled returns False when disabled."""
+        """测试禁用时 is_enabled 返回 False。"""
         settings = MockSettings(enabled=False)
         reranker = CoreReranker(settings=settings)
         
         assert reranker.is_enabled is False
     
     def test_is_enabled_false_for_none_reranker(self, mock_settings):
-        """Test is_enabled returns False for NoneReranker."""
+        """测试 NoneReranker 时 is_enabled 返回 False。"""
         none_reranker = NoneReranker(settings=mock_settings)
-        config = RerankConfig(enabled=True)  # Config says enabled
+        config = RerankConfig(enabled=True)  # 配置为启用
         reranker = CoreReranker(
             settings=mock_settings,
-            reranker=none_reranker,  # But using NoneReranker
+            reranker=none_reranker,  # 但使用 NoneReranker
             config=config,
         )
         

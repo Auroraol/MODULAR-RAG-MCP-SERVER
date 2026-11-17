@@ -1,11 +1,11 @@
 """
-Transform Module.
+变换模块。
 
-This package contains document transformation components:
-- Base transform class
-- Chunk refiner
-- Metadata enricher
-- Image captioner
+该包含以下文档变换组件：
+- 基础变换类
+- Chunk 精炼器
+- 元数据增强器
+- 图像描述生成器
 """
 
 from src.ingestion.transform.base_transform import BaseTransform

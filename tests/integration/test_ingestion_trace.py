@@ -1,10 +1,10 @@
-"""Integration tests for F4 – ingestion pipeline trace instrumentation.
+"""F4 —— 摄入 pipeline Trace 埋点的集成测试。
 
-Verifies that IngestionPipeline.run() populates TraceContext with the
-expected stages (load/split/transform/embed/upsert) and timing data.
+校验 IngestionPipeline.run() 会用预期的阶段（load/split/transform/embed/upsert）
+和耗时数据填充 TraceContext。
 
-We monkey-patch the heavy external components so the test runs without
-real Azure / ChromaDB / LLM dependencies.
+通过 monkey-patch 替换重型外部组件，使测试无需真实的
+Azure / ChromaDB / LLM 依赖即可运行。
 """
 
 import time
@@ -19,7 +19,7 @@ from src.core.trace.trace_context import TraceContext
 from src.core.types import Document, Chunk
 
 
-# ── Fake heavy components ────────────────────────────────────────────
+# ── 伪造的重型组件 ────────────────────────────────────────────
 
 def _fake_document(path: str = "test.pdf") -> Document:
     return Document(
@@ -47,13 +47,13 @@ class FakeBatchResult:
 
 
 class FakePipeline:
-    """Mimics IngestionPipeline but with all heavy components replaced."""
+    """模仿 IngestionPipeline，但所有重型组件均被替换。"""
 
     def __init__(self):
         self.collection = "test_collection"
         self.force = False
 
-        # Mock each component
+        # 对每个组件进行 mock
         self.integrity_checker = MagicMock()
         self.integrity_checker.compute_sha256.return_value = "abc123"
         self.integrity_checker.should_skip.return_value = False
@@ -85,19 +85,19 @@ class FakePipeline:
 
 
 def _run_fake_pipeline(trace: Optional[TraceContext] = None):
-    """Import the real run() logic but wire it to FakePipeline."""
+    """导入真实的 run() 逻辑，但将其绑定到 FakePipeline。"""
     from src.ingestion.pipeline import IngestionPipeline
 
     fp = FakePipeline()
-    # Borrow the real `run` method but bind it to our fake instance
+    # 借用真实的 `run` 方法，但绑定到伪造实例上
     return IngestionPipeline.run(fp, "test.pdf", trace=trace)
 
 
-# ── Tests ────────────────────────────────────────────────────────────
+# ── 测试 ────────────────────────────────────────────────────────────
 
 
 class TestIngestionPipelineTrace:
-    """Verify IngestionPipeline.run() records the 5 required stages."""
+    """校验 IngestionPipeline.run() 记录 5 个必需阶段。"""
 
     def test_records_load_stage(self) -> None:
         trace = TraceContext(trace_type="ingestion")
@@ -153,19 +153,19 @@ class TestIngestionPipelineTrace:
         trace.finish()
         d = trace.to_dict()
         assert d["trace_type"] == "ingestion"
-        assert len(d["stages"]) >= 5  # load, split, transform, embed, upsert
+        assert len(d["stages"]) >= 5  # load、split、transform、embed、upsert
 
     def test_no_trace_no_crash(self) -> None:
-        """run() with trace=None must not raise."""
+        """trace 为 None 时 run() 不得抛出异常。"""
         result = _run_fake_pipeline(trace=None)
         assert result.success
 
     def test_stage_ordering(self) -> None:
-        """Stages should appear in pipeline order."""
+        """各阶段应按 pipeline 顺序出现。"""
         trace = TraceContext(trace_type="ingestion")
         _run_fake_pipeline(trace)
         stage_names = [s["stage"] for s in trace.stages]
         expected_order = ["load", "split", "transform", "embed", "upsert"]
-        # All expected stages present and in order
+        # 所有预期阶段均已出现且顺序正确
         positions = [stage_names.index(s) for s in expected_order]
         assert positions == sorted(positions)

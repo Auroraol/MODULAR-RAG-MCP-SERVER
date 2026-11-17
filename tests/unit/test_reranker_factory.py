@@ -1,11 +1,11 @@
-"""Unit tests for Reranker Factory and Base Reranker.
+"""Reranker 工厂与基础 Reranker 的单元测试。
 
-Test Coverage:
-- Factory pattern: provider registration, creation, and routing
-- Configuration-driven instantiation
-- Error handling for unknown/missing providers
-- Validation logic in BaseReranker
-- NoneReranker fallback behavior
+测试覆盖：
+- 工厂模式：provider 注册、创建与路由
+- 配置驱动的实例化
+- 未知/缺失 provider 的错误处理
+- BaseReranker 中的校验逻辑
+- NoneReranker 回退行为
 """
 
 from typing import Any, Dict, List, Optional
@@ -18,9 +18,9 @@ from src.libs.reranker.reranker_factory import RerankerFactory
 
 
 class FakeReranker(BaseReranker):
-    """Fake reranker implementation for testing.
-    
-    Sorts candidates by descending score for deterministic behavior.
+    """用于测试的伪 reranker 实现。
+
+    按分数降序排列候选，以获得确定性行为。
     """
     
     def __init__(self, settings: Any = None, **kwargs: Any) -> None:
@@ -42,7 +42,7 @@ class FakeReranker(BaseReranker):
 
 
 class TestBaseReranker:
-    """Tests for BaseReranker validation helpers."""
+    """BaseReranker 校验辅助方法的测试。"""
     
     def test_validate_query_success(self):
         reranker = FakeReranker()
@@ -79,7 +79,7 @@ class TestBaseReranker:
 
 
 class TestNoneReranker:
-    """Tests for NoneReranker behavior."""
+    """NoneReranker 行为的测试。"""
     
     def test_rerank_preserves_order(self):
         reranker = NoneReranker()
@@ -94,7 +94,7 @@ class TestNoneReranker:
 
 
 class TestRerankerFactory:
-    """Tests for RerankerFactory."""
+    """RerankerFactory 的测试。"""
     
     def setup_method(self) -> None:
         RerankerFactory._PROVIDERS.clear()
@@ -187,20 +187,21 @@ class TestRerankerFactory:
         assert "settings.rerank.provider" in error_message
 
 
-# ── Boundary / Contract tests (I4) ──────────────────────────────────
+# 边界 / 契约测试（I4）
+# ──────────────────────────────────────────────────────────────────
 
 class TestRerankerContractBoundary:
-    """Boundary tests for BaseReranker contract."""
+    """BaseReranker 契约的边界测试。"""
 
     def test_none_reranker_single_candidate(self):
-        """NoneReranker should handle single-element list."""
+        """NoneReranker 应处理单元素列表。"""
         reranker = NoneReranker()
         result = reranker.rerank("q", [{"id": "a", "score": 0.9}])
         assert len(result) == 1
         assert result[0]["id"] == "a"
 
     def test_none_reranker_validates_inputs(self):
-        """NoneReranker should still validate query and candidates."""
+        """NoneReranker 仍应校验 query 和候选。"""
         reranker = NoneReranker()
         with pytest.raises(ValueError, match="cannot be empty"):
             reranker.rerank("", [{"id": "a"}])
@@ -208,7 +209,7 @@ class TestRerankerContractBoundary:
             reranker.rerank("q", [])
 
     def test_fake_reranker_sorts_by_score(self):
-        """FakeReranker should sort candidates by score descending."""
+        """FakeReranker 应按分数降序排列候选。"""
         reranker = FakeReranker()
         candidates = [
             {"id": "low", "score": 0.1},
@@ -219,14 +220,14 @@ class TestRerankerContractBoundary:
         assert [r["id"] for r in result] == ["high", "mid", "low"]
 
     def test_reranker_returns_new_list(self):
-        """Reranker should return a new list, not mutate the input."""
+        """Reranker 应返回新列表，不修改输入。"""
         reranker = NoneReranker()
         candidates = [{"id": "a"}, {"id": "b"}]
         result = reranker.rerank("q", candidates)
         assert result is not candidates
 
     def test_validate_candidates_with_extra_fields(self):
-        """Candidates with extra metadata fields should be accepted."""
+        """带有额外 metadata 字段的候选应被接受。"""
         reranker = FakeReranker()
         candidates = [
             {"id": "a", "score": 0.5, "text": "hello", "metadata": {"p": 1}},
@@ -234,7 +235,7 @@ class TestRerankerContractBoundary:
         reranker.validate_candidates(candidates)
 
     def test_register_duplicate_provider(self):
-        """Re-registering same name should overwrite silently."""
+        """重复注册同名 provider 应静默覆盖。"""
         RerankerFactory._PROVIDERS.clear()
         RerankerFactory.register_provider("fake", FakeReranker)
         RerankerFactory.register_provider("fake", NoneReranker)

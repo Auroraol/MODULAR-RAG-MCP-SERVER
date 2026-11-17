@@ -1,11 +1,11 @@
-"""Unit tests for VectorStore Factory and Base VectorStore.
+"""VectorStore 工厂与 BaseVectorStore 的单元测试。
 
-Test Coverage:
-- Factory pattern: provider registration, creation, and routing
-- Configuration-driven instantiation
-- Error handling for unknown/missing providers
-- Validation logic in BaseVectorStore
-- Contract testing for interface compliance
+测试覆盖：
+- 工厂模式：provider 注册、创建与路由
+- 配置驱动的实例化
+- 未知/缺失 provider 的错误处理
+- BaseVectorStore 中的校验逻辑
+- 接口一致性的契约测试
 """
 
 from typing import Any, Dict, List, Optional
@@ -18,17 +18,17 @@ from src.libs.vector_store.vector_store_factory import VectorStoreFactory
 
 
 class FakeVectorStore(BaseVectorStore):
-    """Fake vector store provider for testing.
-    
-    Maintains an in-memory dict to simulate upsert/query operations.
+    """用于测试的假 Vector Store provider。
+
+    维护一个内存字典来模拟 upsert/query 操作。
     """
-    
+
     def __init__(self, settings: Any = None, **kwargs: Any):
-        """Initialize fake vector store.
-        
-        Args:
-            settings: Optional settings (unused in fake).
-            **kwargs: Additional parameters (unused).
+        """初始化假 Vector Store。
+
+        参数:
+            settings: 可选的配置（假实现中未使用）。
+            **kwargs: 额外参数（未使用）。
         """
         self.settings = settings
         self.storage: Dict[str, Dict[str, Any]] = {}
@@ -41,7 +41,7 @@ class FakeVectorStore(BaseVectorStore):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
-        """Store records in memory."""
+        """将记录存入内存。"""
         self.validate_records(records)
         self.upsert_count += 1
         
@@ -56,17 +56,17 @@ class FakeVectorStore(BaseVectorStore):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
-        """Return stored records with fake similarity scores."""
+        """返回已存储的记录，并附带假相似度分数。"""
         self.validate_query_vector(vector, top_k)
         self.query_count += 1
         
-        # Simple fake: return all records with descending fake scores
+        # 简单假实现：返回所有记录，分数递减
         results = []
         for i, (record_id, record) in enumerate(self.storage.items()):
             if i >= top_k:
                 break
             
-            # Apply metadata filters if provided
+            # 如果提供了元数据过滤条件则应用
             if filters:
                 metadata = record.get('metadata', {})
                 if not all(metadata.get(k) == v for k, v in filters.items()):
@@ -74,7 +74,7 @@ class FakeVectorStore(BaseVectorStore):
             
             results.append({
                 'id': record_id,
-                'score': 1.0 - (i * 0.1),  # Fake decreasing scores
+                'score': 1.0 - (i * 0.1),  # 假分数递减
                 'metadata': record.get('metadata', {}),
                 'vector': record.get('vector'),
             })
@@ -83,74 +83,74 @@ class FakeVectorStore(BaseVectorStore):
 
 
 class TestBaseVectorStore:
-    """Tests for BaseVectorStore abstract class."""
-    
+    """BaseVectorStore 抽象类的测试。"""
+
     def test_validate_records_success(self):
-        """Valid records should pass validation."""
+        """合法记录应通过校验。"""
         store = FakeVectorStore()
         records = [
             {'id': 'doc1', 'vector': [0.1, 0.2, 0.3]},
             {'id': 'doc2', 'vector': [0.4, 0.5, 0.6], 'metadata': {'source': 'test.pdf'}},
         ]
-        # Should not raise
+        # 不应抛出异常
         store.validate_records(records)
     
     def test_validate_records_empty_list(self):
-        """Empty records list should raise ValueError."""
+        """空的记录列表应抛出 ValueError。"""
         store = FakeVectorStore()
         with pytest.raises(ValueError, match="cannot be empty"):
             store.validate_records([])
     
     def test_validate_records_non_dict(self):
-        """Non-dict records should raise ValueError."""
+        """非字典类型的记录应抛出 ValueError。"""
         store = FakeVectorStore()
         with pytest.raises(ValueError, match="not a dict"):
             store.validate_records([{'id': 'doc1', 'vector': [0.1]}, "invalid"])  # type: ignore
     
     def test_validate_records_missing_id(self):
-        """Record missing 'id' field should raise ValueError."""
+        """缺少 'id' 字段的记录应抛出 ValueError。"""
         store = FakeVectorStore()
         with pytest.raises(ValueError, match="missing required field: 'id'"):
             store.validate_records([{'vector': [0.1, 0.2]}])
     
     def test_validate_records_missing_vector(self):
-        """Record missing 'vector' field should raise ValueError."""
+        """缺少 'vector' 字段的记录应抛出 ValueError。"""
         store = FakeVectorStore()
         with pytest.raises(ValueError, match="missing required field: 'vector'"):
             store.validate_records([{'id': 'doc1'}])
     
     def test_validate_records_invalid_vector_type(self):
-        """Vector with wrong type should raise ValueError."""
+        """类型错误的向量应抛出 ValueError。"""
         store = FakeVectorStore()
         with pytest.raises(ValueError, match="invalid vector type"):
             store.validate_records([{'id': 'doc1', 'vector': "not a list"}])  # type: ignore
     
     def test_validate_records_empty_vector(self):
-        """Empty vector should raise ValueError."""
+        """空向量应抛出 ValueError。"""
         store = FakeVectorStore()
         with pytest.raises(ValueError, match="empty vector"):
             store.validate_records([{'id': 'doc1', 'vector': []}])
     
     def test_validate_query_vector_success(self):
-        """Valid query vector should pass validation."""
+        """合法的查询向量应通过校验。"""
         store = FakeVectorStore()
-        # Should not raise
+        # 不应抛出异常
         store.validate_query_vector([0.1, 0.2, 0.3], top_k=10)
     
     def test_validate_query_vector_invalid_type(self):
-        """Query vector with wrong type should raise ValueError."""
+        """类型错误的查询向量应抛出 ValueError。"""
         store = FakeVectorStore()
         with pytest.raises(ValueError, match="must be a list or tuple"):
             store.validate_query_vector("not a list", top_k=10)  # type: ignore
     
     def test_validate_query_vector_empty(self):
-        """Empty query vector should raise ValueError."""
+        """空的查询向量应抛出 ValueError。"""
         store = FakeVectorStore()
         with pytest.raises(ValueError, match="cannot be empty"):
             store.validate_query_vector([], top_k=10)
     
     def test_validate_query_vector_invalid_top_k(self):
-        """Invalid top_k should raise ValueError."""
+        """非法的 top_k 应抛出 ValueError。"""
         store = FakeVectorStore()
         with pytest.raises(ValueError, match="must be a positive integer"):
             store.validate_query_vector([0.1, 0.2], top_k=0)
@@ -159,23 +159,23 @@ class TestBaseVectorStore:
             store.validate_query_vector([0.1, 0.2], top_k=-5)
     
     def test_delete_not_implemented(self):
-        """delete() should raise NotImplementedError by default."""
+        """默认情况下 delete() 应抛出 NotImplementedError。"""
         store = FakeVectorStore()
         with pytest.raises(NotImplementedError, match="does not implement delete"):
             store.delete(['doc1'])
     
     def test_clear_not_implemented(self):
-        """clear() should raise NotImplementedError by default."""
+        """默认情况下 clear() 应抛出 NotImplementedError。"""
         store = FakeVectorStore()
         with pytest.raises(NotImplementedError, match="does not implement clear"):
             store.clear()
 
 
 class TestFakeVectorStore:
-    """Tests for FakeVectorStore implementation."""
-    
+    """FakeVectorStore 实现的测试。"""
+
     def test_upsert_single_record(self):
-        """Upserting single record should store it."""
+        """Upsert 单条记录应将其存储。"""
         store = FakeVectorStore()
         records = [{'id': 'doc1', 'vector': [0.1, 0.2, 0.3]}]
         store.upsert(records)
@@ -185,7 +185,7 @@ class TestFakeVectorStore:
         assert store.storage['doc1']['vector'] == [0.1, 0.2, 0.3]
     
     def test_upsert_multiple_records(self):
-        """Upserting multiple records should store them all."""
+        """Upsert 多条记录应全部存储。"""
         store = FakeVectorStore()
         records = [
             {'id': 'doc1', 'vector': [0.1, 0.2]},
@@ -199,7 +199,7 @@ class TestFakeVectorStore:
         assert store.storage['doc2']['metadata']['source'] == 'test.pdf'
     
     def test_upsert_idempotent(self):
-        """Upserting same record multiple times should be idempotent."""
+        """多次 upsert 同一条记录应保持幂等。"""
         store = FakeVectorStore()
         records = [{'id': 'doc1', 'vector': [0.1, 0.2]}]
         
@@ -207,10 +207,10 @@ class TestFakeVectorStore:
         store.upsert(records)
         
         assert store.upsert_count == 2
-        assert len(store.storage) == 1  # Still only one record
+        assert len(store.storage) == 1  # 仍然只有一条记录
     
     def test_upsert_validates_input(self):
-        """upsert() should validate records and raise on invalid input."""
+        """upsert() 应校验记录，并在输入非法时抛出异常。"""
         store = FakeVectorStore()
         
         with pytest.raises(ValueError, match="cannot be empty"):
@@ -220,7 +220,7 @@ class TestFakeVectorStore:
             store.upsert([{'vector': [0.1]}])
     
     def test_query_returns_results(self):
-        """query() should return stored records with scores."""
+        """query() 应返回带分数的已存储记录。"""
         store = FakeVectorStore()
         store.upsert([
             {'id': 'doc1', 'vector': [0.1, 0.2]},
@@ -236,7 +236,7 @@ class TestFakeVectorStore:
         assert results[1]['score'] == 0.9
     
     def test_query_respects_top_k(self):
-        """query() should limit results to top_k."""
+        """query() 应将结果数量限制为 top_k。"""
         store = FakeVectorStore()
         store.upsert([
             {'id': f'doc{i}', 'vector': [float(i), float(i)]}
@@ -248,7 +248,7 @@ class TestFakeVectorStore:
         assert len(results) == 3
     
     def test_query_with_filters(self):
-        """query() should apply metadata filters."""
+        """query() 应应用元数据过滤条件。"""
         store = FakeVectorStore()
         store.upsert([
             {'id': 'doc1', 'vector': [0.1], 'metadata': {'source': 'a.pdf'}},
@@ -258,14 +258,14 @@ class TestFakeVectorStore:
         
         results = store.query(vector=[0.0], top_k=10, filters={'source': 'a.pdf'})
         
-        # Should only return doc1 and doc3
+        # 应只返回 doc1 和 doc3
         result_ids = [r['id'] for r in results]
         assert 'doc1' in result_ids
         assert 'doc3' in result_ids
         assert 'doc2' not in result_ids
     
     def test_query_increments_count(self):
-        """Each query should increment the counter."""
+        """每次查询都应递增计数器。"""
         store = FakeVectorStore()
         assert store.query_count == 0
         
@@ -276,7 +276,7 @@ class TestFakeVectorStore:
         assert store.query_count == 2
     
     def test_query_validates_input(self):
-        """query() should validate inputs and raise on invalid parameters."""
+        """query() 应校验输入，并在参数非法时抛出异常。"""
         store = FakeVectorStore()
         
         with pytest.raises(ValueError, match="cannot be empty"):
@@ -287,27 +287,27 @@ class TestFakeVectorStore:
 
 
 class TestVectorStoreFactory:
-    """Tests for VectorStoreFactory."""
-    
+    """VectorStoreFactory 的测试。"""
+
     def setup_method(self):
-        """Reset factory registry before each test."""
+        """每个测试前重置工厂注册表。"""
         VectorStoreFactory._PROVIDERS.clear()
     
     def test_register_provider_success(self):
-        """Registering a valid provider should add it to registry."""
+        """注册合法的 provider 应将其加入注册表。"""
         VectorStoreFactory.register_provider('fake', FakeVectorStore)
         
         assert 'fake' in VectorStoreFactory._PROVIDERS
         assert VectorStoreFactory._PROVIDERS['fake'] is FakeVectorStore
     
     def test_register_provider_case_insensitive(self):
-        """Provider names should be case-insensitive."""
+        """provider 名称应大小写不敏感。"""
         VectorStoreFactory.register_provider('FakeStore', FakeVectorStore)
         
         assert 'fakestore' in VectorStoreFactory._PROVIDERS
     
     def test_register_provider_invalid_class(self):
-        """Registering non-BaseVectorStore class should raise ValueError."""
+        """注册非 BaseVectorStore 子类应抛出 ValueError。"""
         
         class NotAVectorStore:
             pass
@@ -316,10 +316,10 @@ class TestVectorStoreFactory:
             VectorStoreFactory.register_provider('invalid', NotAVectorStore)  # type: ignore
     
     def test_create_with_registered_provider(self):
-        """Creating instance with registered provider should work."""
+        """使用已注册的 provider 创建实例应正常工作。"""
         VectorStoreFactory.register_provider('fake', FakeVectorStore)
-        
-        # Mock settings
+
+        # Mock 配置
         settings = MagicMock()
         settings.vector_store.provider = 'fake'
         
@@ -329,7 +329,7 @@ class TestVectorStoreFactory:
         assert store.settings is settings
     
     def test_create_case_insensitive_provider(self):
-        """Provider lookup should be case-insensitive."""
+        """provider 查找应大小写不敏感。"""
         VectorStoreFactory.register_provider('fake', FakeVectorStore)
         
         settings = MagicMock()
@@ -340,7 +340,7 @@ class TestVectorStoreFactory:
         assert isinstance(store, FakeVectorStore)
     
     def test_create_unknown_provider(self):
-        """Creating instance with unknown provider should raise ValueError."""
+        """使用未知 provider 创建实例应抛出 ValueError。"""
         settings = MagicMock()
         settings.vector_store.provider = 'nonexistent'
         
@@ -348,7 +348,7 @@ class TestVectorStoreFactory:
             VectorStoreFactory.create(settings)
     
     def test_create_unknown_provider_shows_available(self):
-        """Error message should list available providers."""
+        """错误信息应列出可用的 provider。"""
         VectorStoreFactory.register_provider('chroma', FakeVectorStore)
         VectorStoreFactory.register_provider('qdrant', FakeVectorStore)
         
@@ -359,9 +359,9 @@ class TestVectorStoreFactory:
             VectorStoreFactory.create(settings)
     
     def test_create_missing_provider_field(self):
-        """Missing provider field should raise ValueError with helpful message."""
+        """缺少 provider 字段应抛出带有明确提示的 ValueError。"""
         settings = MagicMock()
-        del settings.vector_store  # Simulate missing config section
+        del settings.vector_store  # 模拟配置段缺失
         
         with pytest.raises(ValueError) as exc_info:
             VectorStoreFactory.create(settings)
@@ -372,7 +372,7 @@ class TestVectorStoreFactory:
         assert "settings.yaml" in error_message
     
     def test_create_with_override_kwargs(self):
-        """Factory should pass override kwargs to provider constructor."""
+        """工厂应将覆盖参数传递给 provider 构造函数。"""
         
         class ConfigurableVectorStore(BaseVectorStore):
             def __init__(self, settings: Any, custom_param: str = "default", **kwargs: Any):
@@ -396,7 +396,7 @@ class TestVectorStoreFactory:
         assert store.custom_param == "overridden"
     
     def test_create_provider_instantiation_error(self):
-        """Errors during provider instantiation should be wrapped with context."""
+        """provider 实例化过程中的错误应被包装并附带上下文。"""
         
         class FailingVectorStore(BaseVectorStore):
             def __init__(self, settings: Any, **kwargs: Any):
@@ -417,48 +417,48 @@ class TestVectorStoreFactory:
             VectorStoreFactory.create(settings)
     
     def test_list_providers_empty(self):
-        """list_providers() should return empty list when no providers registered."""
+        """未注册任何 provider 时 list_providers() 应返回空列表。"""
         assert VectorStoreFactory.list_providers() == []
     
     def test_list_providers_with_providers(self):
-        """list_providers() should return sorted list of provider names."""
+        """list_providers() 应返回 provider 名称的排序列表。"""
         VectorStoreFactory.register_provider('chroma', FakeVectorStore)
         VectorStoreFactory.register_provider('qdrant', FakeVectorStore)
         VectorStoreFactory.register_provider('milvus', FakeVectorStore)
         
         providers = VectorStoreFactory.list_providers()
         
-        assert providers == ['chroma', 'milvus', 'qdrant']  # Alphabetically sorted
+        assert providers == ['chroma', 'milvus', 'qdrant']  # 按字母顺序排序
 
 
-# ── Boundary / Contract tests (I4) ──────────────────────────────────
+# ── 边界 / 契约测试（I4） ──────────────────────────────────────────
 
 class TestBaseVectorStoreContractBoundary:
-    """Boundary tests for BaseVectorStore contract."""
+    """BaseVectorStore 契约的边界测试。"""
 
     def test_get_by_ids_not_implemented(self):
-        """get_by_ids() should raise NotImplementedError by default."""
+        """默认情况下 get_by_ids() 应抛出 NotImplementedError。"""
         store = FakeVectorStore()
         with pytest.raises(NotImplementedError, match="does not implement get_by_ids"):
             store.get_by_ids(['doc1'])
 
     def test_validate_records_vector_non_numeric_accepted(self):
-        """Vector containing non-numeric elements is accepted at base level.
-        
-        Note: The base class only checks type (list/tuple) and non-empty.
-        Type enforcement of individual elements is provider-specific.
+        """含非数值元素的向量在基类层面是被接受的。
+
+        注意：基类只检查类型（list/tuple）与非空。
+        对单个元素的类型约束由各 provider 自行实现。
         """
         store = FakeVectorStore()
-        # Base validation does not reject non-numeric elements
+        # 基类校验不会拒绝非数值元素
         store.validate_records([{'id': 'doc1', 'vector': ['a', 'b']}])
 
     def test_validate_records_single_element_vector(self):
-        """Single-element vector should be valid."""
+        """单元素向量应合法。"""
         store = FakeVectorStore()
         store.validate_records([{'id': 'doc1', 'vector': [0.5]}])
 
     def test_query_top_k_one(self):
-        """top_k=1 should return at most 1 result."""
+        """top_k=1 时最多返回 1 条结果。"""
         store = FakeVectorStore()
         store.upsert([
             {'id': 'a', 'vector': [0.1]},
@@ -468,13 +468,13 @@ class TestBaseVectorStoreContractBoundary:
         assert len(results) <= 1
 
     def test_query_empty_store(self):
-        """Querying empty store should return empty list."""
+        """查询空存储应返回空列表。"""
         store = FakeVectorStore()
         results = store.query([0.1, 0.2], top_k=5)
         assert results == []
 
     def test_upsert_preserves_metadata(self):
-        """Metadata should be preserved through upsert → query cycle."""
+        """元数据应在 upsert → query 的完整流程中被保留。"""
         store = FakeVectorStore()
         store.upsert([{
             'id': 'doc1',
@@ -486,14 +486,14 @@ class TestBaseVectorStoreContractBoundary:
         assert results[0]['metadata']['page'] == 3
 
     def test_query_filters_empty_dict(self):
-        """Empty filter dict should match all records."""
+        """空的过滤字典应匹配所有记录。"""
         store = FakeVectorStore()
         store.upsert([{'id': 'a', 'vector': [0.1], 'metadata': {'k': 'v'}}])
         results = store.query([0.1], top_k=10, filters={})
         assert len(results) == 1
 
     def test_delete_requires_list(self):
-        """delete() takes a list of IDs (contract shape check)."""
+        """delete() 接收 ID 列表（契约形状检查）。"""
         store = FakeVectorStore()
         with pytest.raises(NotImplementedError):
             store.delete(['id1', 'id2'])

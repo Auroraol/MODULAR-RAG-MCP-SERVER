@@ -1,15 +1,15 @@
 ---
 name: project-learner
-description: "Interactive project learning coach via interview-style Q&A. Reads codebase and docs, dynamically generates interview questions per knowledge domain and sub-topic, conducts up to 4 follow-up rounds, scores answers, provides learning guidance with code/doc references, and persists progress. 10 domains × 3-5 sub-topics = 45 knowledge points for comprehensive interview coverage. Use when user says '学习项目', '了解项目', '检验项目', '项目学习', '面试准备', 'learn project', 'study project', 'review project', 'interview prep', 'knowledge check', or wants to understand/master the project through guided Q&A."
+description: "通过面试式问答进行交互式项目学习辅导。读取代码库和文档，按知识域和子知识点动态生成面试问题，进行最多 4 轮追问，为回答评分，提供带代码/文档引用的学习指导，并持久化进度。10 个知识域 × 3-5 个子知识点 = 45 个知识点，实现全面的面试覆盖。当用户说 '学习项目'、'了解项目'、'检验项目'、'项目学习'、'面试准备'、'learn project'、'study project'、'review project'、'interview prep'、'knowledge check'，或希望通过引导式问答理解/掌握该项目时使用。"
 ---
 
-# Project Learner
+# Project Learner（项目学习）
 
-Interactive interview-coach that helps users master this project through guided Q&A.
+通过引导式问答帮助用户掌握本项目的交互式面试辅导。
 
-All user-facing interaction in **中文**. Internal instructions in English.
+所有面向用户的交互均使用**中文**。内部指令使用英文。
 
-## Pipeline Overview
+## 流程概览
 
 ```
 Discovery → Check History → User Intent → Select Domain → Select Sub-topic
@@ -19,21 +19,21 @@ Discovery → Check History → User Intent → Select Domain → Select Sub-top
 
 ---
 
-## Phase 1: Project Discovery
+## 阶段 1：项目探索
 
-Autonomously build project understanding. Do NOT ask user anything yet.
+自主建立项目理解。此时不要向用户提出任何问题。
 
-1. Read `DEV_SPEC.md` — project goals, architecture, tech stack, module design
-2. Read `config/settings.yaml` — configuration system
-3. List `src/` directory tree — module structure (core/, ingestion/, libs/, mcp_server/, observability/)
-4. Read key entry points: `main.py`, `scripts/ingest.py`, `scripts/query.py`
-5. List `tests/` — testing strategy overview
+1. 读取 `DEV_SPEC.md` — 项目目标、架构、技术栈、模块设计
+2. 读取 `config/settings.yaml` — 配置系统
+3. 列出 `src/` 目录树 — 模块结构（core/、ingestion/、libs/、mcp_server/、observability/）
+4. 读取关键入口点：`main.py`、`scripts/ingest.py`、`scripts/query.py`
+5. 列出 `tests/` — 测试策略概览
 
-Build an internal mental model covering these **10 Knowledge Domains**, each containing **3-5 Sub-topics** (知识点), totaling **45 interview knowledge points**:
+构建一个内部心智模型，覆盖以下 **10 个知识域**，每个知识域包含 **3-5 个子知识点**（知识点），共计 **45 个面试知识点**：
 
-### Domain & Sub-topic Map
+### 知识域与子知识点映射
 
-| ID | 知识域 / 知识点 | Key Code Areas |
+| ID | 知识域 / 知识点 | 关键代码区域 |
 |----|----------------|---------------|
 | **D1** | **RAG Pipeline 整体架构** | |
 | D1.1 | 端到端数据流：从文档上传到生成回答的完整链路 | `DEV_SPEC.md`, `main.py`, `scripts/` |
@@ -41,13 +41,13 @@ Build an internal mental model covering these **10 Knowledge Domains**, each con
 | D1.3 | Pipeline 组装：配置驱动的组件组合机制 | `main.py`, `config/settings.yaml`, `src/core/settings.py` |
 | D1.4 | 核心数据类型：Document、Chunk、QueryResult 等类型系统 | `src/core/types.py` |
 | D1.5 | 入口脚本设计：CLI 脚本的职责划分与参数传递 | `scripts/ingest.py`, `scripts/query.py`, `scripts/evaluate.py` |
-| **D2** | **Ingestion Pipeline** | |
+| **D2** | **数据摄取 Pipeline** | |
 | D2.1 | Pipeline 整体流程：从文档加载到向量存储的阶段设计 | `src/ingestion/pipeline.py` |
 | D2.2 | Chunking 策略：RecursiveSplitter 的分割逻辑与参数调优 | `src/ingestion/chunking/`, `src/libs/splitter/` |
 | D2.3 | Transform 链：ChunkRefiner、MetadataEnricher 的职责与执行顺序 | `src/ingestion/transform/` |
 | D2.4 | Embedding 编码：Dense/Sparse 双编码与 BatchProcessor 批处理 | `src/ingestion/embedding/` |
 | D2.5 | 存储层：VectorUpserter、BM25Indexer、ImageStorage 三类存储协同 | `src/ingestion/storage/` |
-| **D3** | **Hybrid Search & Retrieval** | |
+| **D3** | **混合检索（Hybrid Search & Retrieval）** | |
 | D3.1 | Dense Retrieval：向量检索原理与 DenseRetriever 实现 | `src/core/query_engine/dense_retriever.py` |
 | D3.2 | Sparse Retrieval：BM25 稀疏检索与 SparseRetriever 实现 | `src/core/query_engine/sparse_retriever.py` |
 | D3.3 | Hybrid Search 融合：RRF 算法与 Fusion 模块设计 | `src/core/query_engine/hybrid_search.py`, `fusion.py` |
@@ -91,93 +91,93 @@ Build an internal mental model covering these **10 Knowledge Domains**, each con
 | D10.3 | Collection 管理：集合元数据关联与文档生命周期 | `src/ingestion/document_manager.py` |
 | D10.4 | 文档状态追踪：已入库/待更新/已删除的状态流转 | `src/ingestion/document_manager.py` |
 
-> **Total: 10 domains × 3-5 sub-topics = 45 knowledge points**
-> Each sub-topic can be studied multiple times with different questions, providing 100+ possible interview questions.
+> **总计：10 个知识域 × 3-5 个子知识点 = 45 个知识点**
+> 每个子知识点都可以用不同的问题多次学习，可提供 100+ 道可能的面试题。
 
 ---
 
-## Phase 2: Check Learning History
+## 阶段 2：检查学习历史
 
-1. Try reading `.github/skills/project-learner/references/LEARNING_PROGRESS.md`
-2. **File missing** → first-time learner, proceed to Phase 3
-3. **File exists** → parse BOTH tables:
-   - **Domain Summary**: which domains are ⬜/🔴/🔶/✅
-   - **Sub-topic Progress**: which sub-topics are ⬜ (unlearned), 🔴 (weak ≤3), 🔶 (learning 4-6), ✅ (mastered ≥7)
-   - Count: total sub-topics mastered / 45
-   - Identify lowest-scoring sub-topics for review recommendation
+1. 尝试读取 `.github/skills/project-learner/references/LEARNING_PROGRESS.md`
+2. **文件不存在** → 首次学习，进入阶段 3
+3. **文件存在** → 解析**两个**表格：
+   - **知识域汇总**：哪些知识域为 ⬜/🔴/🔶/✅
+   - **子知识点进度**：哪些子知识点为 ⬜（未学习）、🔴（薄弱 ≤3）、🔶（学习中 4-6）、✅（已掌握 ≥7）
+   - 统计：已掌握的子知识点总数 / 45
+   - 找出得分最低的子知识点以推荐复习
 
 ---
 
-## Phase 3: User Intent
+## 阶段 3：用户意图
 
-Use `ask_questions` (中文) to determine what the user wants:
+使用 `ask_questions`（中文）确定用户的意图：
 
-**Question 1 — 学习模式** (single-select):
+**问题 1 — 学习模式**（单选）：
 
-| Option | Description |
+| 选项 | 说明 |
 |--------|------------|
-| 🆕 学习新知识点 | Pick from unlearned/weak sub-topics |
-| 📖 复习已学内容 | Review previously learned low-score sub-topics |
-| 📋 查看学习进度 | Display progress table, then end |
-| 🎯 Agent 推荐 | Auto-pick the best next sub-topic to study |
+| 🆕 学习新知识点 | 从未学习/薄弱的子知识点中选择 |
+| 📖 复习已学内容 | 复习之前学过的低分子知识点 |
+| 📋 查看学习进度 | 显示进度表，然后结束 |
+| 🎯 Agent 推荐 | 自动选择下一个最佳学习子知识点 |
 
-If user picks 📋 → display the full progress table from `LEARNING_PROGRESS.md` and stop.
+如果用户选择 📋 → 显示 `LEARNING_PROGRESS.md` 中的完整进度表并停止。
 
-If user picks 🎯 → Agent auto-selects the optimal sub-topic (prioritize: ⬜ unlearned in weakest domain → 🔴 weak → 🔶 lowest score). Skip Question 2 & 3, go directly to Phase 4.
+如果用户选择 🎯 → Agent 自动选择最优子知识点（优先级：最弱知识域中的 ⬜ 未学习 → 🔴 薄弱 → 🔶 最低分）。跳过问题 2 和 3，直接进入阶段 4。
 
-**Question 2 — 知识域选择** (single-select, only for 🆕 or 📖):
+**问题 2 — 知识域选择**（单选，仅针对 🆕 或 📖）：
 
-List all 10 domains with current status + completion rate. Example format:
+列出所有 10 个知识域及其当前状态 + 完成率。示例格式：
 - `D1 RAG Pipeline 整体架构 [2/5 ✅] 🔶`
-- `D2 Ingestion Pipeline [0/5 ✅] ⬜`
+- `D2 数据摄取 Pipeline [0/5 ✅] ⬜`
 
-For 📖 mode: only show domains with previous scores. For 🆕 mode: prioritize domains with most ⬜ sub-topics.
+对于 📖 模式：只显示有历史得分的知识域。对于 🆕 模式：优先显示 ⬜ 子知识点最多的知识域。
 
-**Question 3 — 知识点选择** (single-select, only after Question 2):
+**问题 3 — 知识点选择**（单选，仅在问题 2 之后）：
 
-List all sub-topics under the selected domain with their status:
+列出所选知识域下的所有子知识点及其状态：
 - `D2.1 Pipeline 整体流程 ⬜ 未学习`
 - `D2.2 Chunking 策略 🔶 6/10`
 - `D2.3 Transform 链 ✅ 8/10`
 
-Include option:
-- 🎯 Agent 推荐 — auto-pick the weakest/unlearned sub-topic in this domain
+包含选项：
+- 🎯 Agent 推荐 — 自动选择该知识域中最弱/未学习的子知识点
 
 ---
 
-## Phase 4: Generate Interview Question
+## 阶段 4：生成面试问题
 
-Based on the selected **sub-topic** (not just domain):
+基于选定的**子知识点**（而不仅是知识域）：
 
-1. **Deep-read** the sub-topic's specific source code — read actual class definitions, key functions, config sections listed in the Sub-topic Map
-2. **Dynamically generate** ONE main interview question (中文) grounded in this sub-topic's real code
-3. **Internally prepare** up to 4 progressive follow-up questions (do NOT show these yet)
-4. **Avoid repeating** questions from previous sessions — check Detailed History for this sub-topic and generate a different angle
+1. **深入阅读**该子知识点的具体源代码 — 阅读子知识点映射中列出的实际类定义、关键函数、配置段
+2. **动态生成**一道基于该子知识点真实代码的面试主问题（中文）
+3. **内部准备**最多 4 道递进式追问（此时不要展示）
+4. **避免重复**之前会话中的问题 — 检查该子知识点的详细历史并生成不同的角度
 
-### Question Design Principles
+### 问题设计原则
 
-- Questions MUST reference real code/architecture from THIS project, never generic
-- Questions should be specific to the sub-topic, not the whole domain
-- Difficulty progression for follow-ups:
-  - Follow-up 1: "为什么这样设计？" (design rationale)
-  - Follow-up 2: "和替代方案对比有什么优劣？" (trade-offs)
-  - Follow-up 3: "边界条件/异常情况怎么处理？" (edge cases)
-  - Follow-up 4: "如果让你重新设计，会怎么做？" (redesign thinking)
-- Adjust follow-ups dynamically based on what the user actually answers
+- 问题必须引用**本项目**的真实代码/架构，绝不使用泛泛而谈的表述
+- 问题应针对子知识点，而不是整个知识域
+- 追问的难度递进：
+  - 追问 1：“为什么这样设计？”（设计理由）
+  - 追问 2：“和替代方案对比有什么优劣？”（权衡取舍）
+  - 追问 3：“边界条件/异常情况怎么处理？”（边界情况）
+  - 追问 4：“如果让你重新设计，会怎么做？”（重新设计的思考）
+- 根据用户的实际回答动态调整追问
 
-### Question Angle Variety
+### 问题角度多样性
 
-Each sub-topic can be asked from multiple angles. When a sub-topic is revisited, pick a DIFFERENT angle:
-- **What**: 描述这个模块/机制做了什么
-- **How**: 具体实现细节，代码层面怎么做的
-- **Why**: 为什么选择这种设计方案
-- **Compare**: 和替代方案的对比
-- **Debug**: 如果出了问题怎么排查
-- **Extend**: 如果要扩展功能怎么做
+每个子知识点都可以从多个角度提问。重新学习某个子知识点时，选择**不同的**角度：
+- **What**：描述这个模块/机制做了什么
+- **How**：具体实现细节，代码层面怎么做的
+- **Why**：为什么选择这种设计方案
+- **Compare**：和替代方案的对比
+- **Debug**：如果出了问题怎么排查
+- **Extend**：如果要扩展功能怎么做
 
-### Question Format
+### 问题格式
 
-Present to user:
+向用户展示：
 
 ```
 ## 🎯 面试问题
@@ -191,7 +191,7 @@ Present to user:
 
 ---
 
-## Phase 5: Interactive Q&A (≤4 Follow-up Rounds)
+## 阶段 5：交互式问答（≤4 轮追问）
 
 ```
 Round 0: Main question → User answers
@@ -199,13 +199,13 @@ Round 1-4: Brief feedback on previous answer + follow-up question → User answe
 Early exit: User says "结束"/"pass"/"跳过" OR answer is sufficiently comprehensive
 ```
 
-### Per-Round Behavior
+### 每轮行为
 
-1. **Acknowledge** what the user got right (1-2 sentences, 中文)
-2. **Hint** at what was missed without giving away the answer (1 sentence)
-3. **Ask follow-up** that digs deeper based on their answer direction
+1. **肯定**用户答对的部分（1-2 句，中文）
+2. **提示**遗漏的内容，但不直接给出答案（1 句）
+3. **提出追问**，根据其回答方向深入挖掘
 
-### Follow-up Output Format
+### 追问输出格式
 
 ```
 ### 第 N 轮追问
@@ -216,13 +216,13 @@ Early exit: User says "结束"/"pass"/"跳过" OR answer is sufficiently compreh
 **追问**: [Follow-up question]
 ```
 
-If user's answer already covers the planned follow-up, skip to a harder one or end early.
+如果用户的回答已经涵盖计划中的追问内容，则跳到更难的问题或提前结束。
 
 ---
 
-## Phase 6: Evaluation
+## 阶段 6：评估
 
-After Q&A ends, output a structured evaluation report (中文):
+问答结束后，输出结构化评估报告（中文）：
 
 ```markdown
 ## 📊 评价报告
@@ -252,18 +252,18 @@ After Q&A ends, output a structured evaluation report (中文):
 ### 📊 学习进度: [mastered count]/45 知识点已掌握
 ```
 
-Scoring rules:
-- Average of 4 dimensions, rounded to nearest 0.5
-- 9-10: Expert level, can explain design decisions and trade-offs
-- 7-8: Solid understanding, knows how and why
-- 4-6: Basic understanding, knows what but not deep why
-- 1-3: Surface level, needs significant study
+评分规则：
+- 四个维度的平均值，四舍五入到最近的 0.5
+- 9-10：专家级，能解释设计决策和权衡
+- 7-8：扎实理解，知道如何做和为什么
+- 4-6：基础理解，知道是什么但不够深入为什么
+- 1-3：表面水平，需要大量学习
 
 ---
 
-## Phase 7: Learning Guide
+## 阶段 7：学习指南
 
-Immediately after evaluation, provide targeted study resources (中文):
+评估后立即提供有针对性的学习资源（中文）：
 
 ```markdown
 ## 📚 学习指南
@@ -285,51 +285,51 @@ Immediately after evaluation, provide targeted study resources (中文):
 4. 尝试修改 [config/code] 观察变化
 ```
 
-Guidelines:
-- Code references MUST use actual file paths with line numbers where relevant
-- Only recommend reading 3-5 key files, not entire codebase
-- Include at least one hands-on command the user can run
-- External references only for concepts not explained in the codebase (e.g., RRF algorithm, BM25)
+指南：
+- 代码引用必须使用实际文件路径，并在相关处标注行号
+- 只推荐阅读 3-5 个关键文件，而不是整个代码库
+- 至少包含一条用户可以运行的实际命令
+- 外部参考仅用于代码库中未解释的概念（例如 RRF 算法、BM25）
 
 ---
 
-## Phase 8: Persist Progress
+## 阶段 8：持久化进度
 
-Update `.github/skills/project-learner/references/LEARNING_PROGRESS.md`.
+更新 `.github/skills/project-learner/references/LEARNING_PROGRESS.md`。
 
-If file doesn't exist, create it from the template in [references/LEARNING_PROGRESS.md](references/LEARNING_PROGRESS.md). If it exists, update it.
+如果文件不存在，请从 [references/LEARNING_PROGRESS.md](references/LEARNING_PROGRESS.md) 中的模板创建。如果存在，则更新它。
 
-### Update Rules
+### 更新规则
 
-1. **Append** one row to the `Detailed History` table (include Sub-topic ID)
-2. **Update** the `Sub-topic Progress` table for the affected sub-topic:
-   - 已学 = count of sessions for that sub-topic
-   - 最高分 = max score across all sessions for this sub-topic
-   - 最近分 = score from this session
-   - Status: ≥7 → ✅ 掌握, 4-6 → 🔶 学习中, ≤3 → 🔴 薄弱, 0 sessions → ⬜ 未学习
-3. **Recalculate** the `Domain Summary` table:
-   - 已掌握 = count of ✅ sub-topics in that domain / total sub-topics in domain
-   - 已学习 = count of non-⬜ sub-topics / total sub-topics
-   - 平均分 = average score of all studied sub-topics in domain
-   - Domain status: all sub-topics ✅ → ✅ 掌握, any studied → 🔶 学习中 or 🔴 薄弱 (based on avg), none → ⬜ 未学习
-4. **Update** the `Last updated` timestamp
-5. **Update** the session counter `#` (auto-increment)
-6. **Update** the overall progress line: `总进度: X/45 知识点已掌握`
+1. 向 `Detailed History` 表**追加**一行（包含子知识点 ID）
+2. **更新**受影响子知识点的 `Sub-topic Progress` 表：
+   - 已学 = 该子知识点的学习场次
+   - 最高分 = 该子知识点所有场次中的最高分
+   - 最近分 = 本次学习的得分
+   - 状态：≥7 → ✅ 掌握，4-6 → 🔶 学习中，≤3 → 🔴 薄弱，0 场次 → ⬜ 未学习
+3. **重新计算** `Domain Summary` 表：
+   - 已掌握 = 该知识域中 ✅ 子知识点的数量 / 该知识域的子知识点总数
+   - 已学习 = 非 ⬜ 子知识点的数量 / 子知识点总数
+   - 平均分 = 该知识域中所有已学习子知识点的平均分
+   - 知识域状态：所有子知识点 ✅ → ✅ 掌握；有已学习 → 🔶 学习中 或 🔴 薄弱（基于平均分）；无 → ⬜ 未学习
+4. **更新** `Last updated` 时间戳
+5. **更新**会话计数器 `#`（自动递增）
+6. **更新**总体进度行：`总进度: X/45 知识点已掌握`
 
 ---
 
-## Phase 9: Continue or End
+## 阶段 9：继续或结束
 
-After persisting, ask the user (中文):
+持久化后，询问用户（中文）：
 
-| Option | Action |
+| 选项 | 操作 |
 |--------|--------|
-| 🔄 继续学习下一个知识点 | Loop back to Phase 3 |
-| 🎯 Agent 推荐下一个 | Auto-pick optimal next sub-topic, go to Phase 4 |
-| 📋 查看当前学习进度 | Display full progress table |
-| 🏁 结束本次学习 | Show session summary, stop |
+| 🔄 继续学习下一个知识点 | 回到阶段 3 |
+| 🎯 Agent 推荐下一个 | 自动选择最优的下一个子知识点，进入阶段 4 |
+| 📋 查看当前学习进度 | 显示完整进度表 |
+| 🏁 结束本次学习 | 显示本次总结，停止 |
 
-### Session Summary (on 🏁 end)
+### 本次总结（选择 🏁 结束时）
 
 ```markdown
 ## 📝 本次学习总结
@@ -345,13 +345,13 @@ After persisting, ask the user (中文):
 
 ---
 
-## Key Paths
+## 关键路径
 
-| File | Purpose |
+| 文件 | 用途 |
 |------|---------|
-| `.github/skills/project-learner/references/LEARNING_PROGRESS.md` | Persistent learning state (45 sub-topics) |
-| `DEV_SPEC.md` | Project specification & architecture |
-| `config/settings.yaml` | Configuration reference |
-| `src/` | All source code modules |
-| `tests/` | Test suite for understanding test strategy |
-| `scripts/` | CLI entry points (ingest/query/evaluate) |
+| `.github/skills/project-learner/references/LEARNING_PROGRESS.md` | 持久化学习状态（45 个子知识点） |
+| `DEV_SPEC.md` | 项目规范与架构 |
+| `config/settings.yaml` | 配置参考 |
+| `src/` | 所有源代码模块 |
+| `tests/` | 用于理解测试策略的测试套件 |
+| `scripts/` | CLI 入口点（ingest/query/evaluate） |

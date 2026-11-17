@@ -1,4 +1,4 @@
-"""Integration tests for MCP server stdio entrypoint."""
+"""MCP server stdio 入口点的集成测试。"""
 
 from __future__ import annotations
 
@@ -17,48 +17,48 @@ def send_and_receive(
     timeout: float = 5.0,
     expected_responses: int = 0,
 ) -> List[str]:
-    """Send requests to proc stdin and collect stdout lines.
+    """向 proc 的 stdin 发送请求并收集 stdout 行。
 
-    Args:
-        proc: Subprocess with stdin/stdout pipes.
-        requests: List of JSON-RPC requests/notifications to send.
-        timeout: Max time to wait for responses.
-        expected_responses: Number of responses to wait for (0 = wait until timeout/EOF).
+    参数:
+        proc: 带 stdin/stdout 管道的子进程。
+        requests: 要发送的 JSON-RPC 请求/通知列表。
+        timeout: 等待响应的最长时间。
+        expected_responses: 等待的响应数量（0 = 等待到超时/EOF）。
 
-    Returns:
-        List of lines read from stdout.
+    返回:
+        从 stdout 读取的行列表。
     """
     assert proc.stdin is not None
     assert proc.stdout is not None
 
-    # Send all requests
+    # 发送所有请求
     for req in requests:
         proc.stdin.write(json.dumps(req) + "\n")
         proc.stdin.flush()
 
-    # Read stdout with timeout
+    # 带超时地读取 stdout
     lines = []
     start = time.time()
     response_count = 0
-    
-    # Count expected responses (requests with 'id' field, excluding notifications)
+
+    # 统计预期响应数（含 'id' 字段的请求，不含通知）
     if expected_responses == 0:
         expected_responses = sum(1 for req in requests if 'id' in req)
-    
+
     while time.time() - start < timeout:
-        # Check if we got enough responses
+        # 检查是否已收到足够响应
         if expected_responses > 0 and response_count >= expected_responses:
             break
-            
+
         line = proc.stdout.readline()
         if not line:
-            # Give a bit more time for slow responses
+            # 为较慢的响应多留一些时间
             time.sleep(0.1)
             continue
         stripped = line.strip()
         if stripped:
             lines.append(stripped)
-            # Count JSON-RPC responses (have 'id' and 'result' or 'error')
+            # 统计 JSON-RPC 响应（含 'id' 以及 'result' 或 'error'）
             try:
                 data = json.loads(stripped)
                 if 'id' in data and ('result' in data or 'error' in data):
@@ -70,7 +70,7 @@ def send_and_receive(
 
 
 def find_response(lines: List[str], request_id: int) -> Optional[Dict[str, Any]]:
-    """Find JSON-RPC response with given id in lines."""
+    """在 lines 中查找指定 id 的 JSON-RPC 响应。"""
     for line in lines:
         if not line.startswith('{"jsonrpc"'):
             continue
@@ -85,7 +85,7 @@ def find_response(lines: List[str], request_id: int) -> Optional[Dict[str, Any]]
 
 @pytest.mark.integration
 def test_mcp_server_initialize_stdio() -> None:
-    """Ensure initialize works and stdout is clean JSON-RPC output."""
+    """确保 initialize 正常工作，且 stdout 为干净的 JSON-RPC 输出。"""
 
     proc = subprocess.Popen(
         [sys.executable, "-m", "src.mcp_server.server"],
@@ -130,7 +130,7 @@ def test_mcp_server_initialize_stdio() -> None:
 
 @pytest.mark.integration
 def test_mcp_server_tools_list_stdio() -> None:
-    """Ensure tools/list works and returns empty tools array."""
+    """确保 tools/list 正常工作，并返回空的工具数组。"""
 
     proc = subprocess.Popen(
         [sys.executable, "-m", "src.mcp_server.server"],
@@ -141,7 +141,7 @@ def test_mcp_server_tools_list_stdio() -> None:
     )
 
     requests = [
-        # Initialize request
+        # 初始化请求
         {
             "jsonrpc": "2.0",
             "id": 1,
@@ -152,12 +152,12 @@ def test_mcp_server_tools_list_stdio() -> None:
                 "capabilities": {},
             },
         },
-        # Initialized notification (required by MCP protocol)
+        # 初始化完成通知（MCP 协议要求）
         {
             "jsonrpc": "2.0",
             "method": "notifications/initialized",
         },
-        # Tools list request
+        # 工具列表请求
         {
             "jsonrpc": "2.0",
             "id": 2,
@@ -178,12 +178,12 @@ def test_mcp_server_tools_list_stdio() -> None:
 
     assert len(lines) > 0, "No stdout lines received."
 
-    # Verify initialize response
+    # 校验 initialize 响应
     init_response = find_response(lines, 1)
     assert init_response is not None, f"No initialize response found in: {lines}"
     assert "result" in init_response
 
-    # Verify tools/list response
+    # 校验 tools/list 响应
     tools_response = find_response(lines, 2)
     assert tools_response is not None, f"No tools/list response found in: {lines}"
 
@@ -191,30 +191,30 @@ def test_mcp_server_tools_list_stdio() -> None:
     assert tools_response["id"] == 2
     assert "result" in tools_response
     assert "tools" in tools_response["result"]
-    # Should have at least query_knowledge_hub and list_collections tools registered
+    # 应至少注册了 query_knowledge_hub 和 list_collections 两个工具
     assert isinstance(tools_response["result"]["tools"], list)
     assert len(tools_response["result"]["tools"]) >= 2
-    
-    # Verify registered tools are present
+
+    # 校验已注册的工具存在
     tool_names = [t["name"] for t in tools_response["result"]["tools"]]
     assert "query_knowledge_hub" in tool_names
     assert "list_collections" in tool_names
 
 
 # =============================================================================
-# Multimodal Response Tests (E6)
+# 多模态响应测试（E6）
 # =============================================================================
 
 
 @pytest.mark.integration
 @pytest.mark.image
 def test_multimodal_assembler_image_content_structure() -> None:
-    """Test that MultimodalAssembler produces correct MCP ImageContent structure.
-    
-    Verifies:
-    - ImageContent blocks have type="image"
-    - mimeType is correctly set (e.g., "image/png")
-    - data field contains valid base64 string
+    """测试 MultimodalAssembler 生成正确的 MCP ImageContent 结构。
+
+    校验:
+    - ImageContent 块的 type="image"
+    - mimeType 设置正确（例如 "image/png"）
+    - data 字段包含有效的 base64 字符串
     """
     import base64
     import tempfile
@@ -225,7 +225,7 @@ def test_multimodal_assembler_image_content_structure() -> None:
     from src.core.response.multimodal_assembler import MultimodalAssembler
     from src.core.types import RetrievalResult
     
-    # Create test image (minimal valid PNG)
+    # 创建测试图像（最小有效 PNG）
     png_data = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
     
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -246,7 +246,7 @@ def test_multimodal_assembler_image_content_structure() -> None:
         
         blocks = assembler.assemble_for_result(result)
         
-        # Find ImageContent blocks
+        # 查找 ImageContent 块
         image_blocks = [b for b in blocks if isinstance(b, types.ImageContent)]
         assert len(image_blocks) >= 1, "Should produce at least one ImageContent block"
         
@@ -255,7 +255,7 @@ def test_multimodal_assembler_image_content_structure() -> None:
         assert img_block.mimeType == "image/png", "MIME type should be 'image/png'"
         assert img_block.data, "data should not be empty"
         
-        # Verify base64 is valid
+        # 校验 base64 有效
         decoded = base64.b64decode(img_block.data)
         assert decoded.startswith(b"\x89PNG"), "Decoded data should be valid PNG"
 
@@ -263,12 +263,12 @@ def test_multimodal_assembler_image_content_structure() -> None:
 @pytest.mark.integration
 @pytest.mark.image
 def test_response_builder_multimodal_integration() -> None:
-    """Test that ResponseBuilder correctly integrates multimodal content.
-    
-    Verifies:
-    - ResponseBuilder produces MCPToolResponse with image_contents
-    - to_mcp_content() returns ImageContent blocks when images present
-    - metadata includes has_images and image_count
+    """测试 ResponseBuilder 正确集成多模态内容。
+
+    校验:
+    - ResponseBuilder 生成带 image_contents 的 MCPToolResponse
+    - 存在图像时 to_mcp_content() 返回 ImageContent 块
+    - metadata 包含 has_images 与 image_count
     """
     import tempfile
     from pathlib import Path
@@ -279,7 +279,7 @@ def test_response_builder_multimodal_integration() -> None:
     from src.core.response.response_builder import ResponseBuilder
     from src.core.types import RetrievalResult
     
-    # Create test image
+    # 创建测试图像
     png_data = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
     
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -306,15 +306,15 @@ def test_response_builder_multimodal_integration() -> None:
         
         response = builder.build(results, query="test query")
         
-        # Check MCPToolResponse has images
+        # 检查 MCPToolResponse 是否包含图像
         assert response.has_images, "Response should have images"
         assert len(response.image_contents) >= 1, "Should have at least one ImageContent"
-        
-        # Check metadata
+
+        # 检查 metadata
         assert response.metadata.get("has_images") is True
         assert response.metadata.get("image_count", 0) >= 1
-        
-        # Check to_mcp_content() output
+
+        # 检查 to_mcp_content() 输出
         mcp_blocks = response.to_mcp_content()
         image_blocks = [b for b in mcp_blocks if isinstance(b, types.ImageContent)]
         assert len(image_blocks) >= 1, "MCP content should include ImageContent blocks"
@@ -323,18 +323,18 @@ def test_response_builder_multimodal_integration() -> None:
 @pytest.mark.integration
 @pytest.mark.image
 def test_mcp_tool_response_image_content_format() -> None:
-    """Test MCPToolResponse.to_mcp_content() returns correct format for images.
-    
-    Verifies the exact structure expected by MCP protocol:
-    - ImageContent blocks have correct type, mimeType, data fields
-    - Multiple content types (text + image) can coexist
+    """测试 MCPToolResponse.to_mcp_content() 返回正确的图像格式。
+
+    校验 MCP 协议期望的精确结构:
+    - ImageContent 块的 type、mimeType、data 字段正确
+    - 多种内容类型（文本 + 图像）可以共存
     """
     from mcp import types
     
     from src.core.response.citation_generator import Citation
     from src.core.response.response_builder import MCPToolResponse
     
-    # Create response with mock image content
+    # 创建带 mock 图像内容的响应
     mock_image = types.ImageContent(
         type="image",
         data="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
@@ -357,32 +357,32 @@ def test_mcp_tool_response_image_content_format() -> None:
         image_contents=[mock_image],
     )
     
-    # Get MCP content blocks
+    # 获取 MCP 内容块
     blocks = response.to_mcp_content()
-    
-    # Should have text blocks and image blocks
+
+    # 应同时包含文本块和图像块
     text_blocks = [b for b in blocks if isinstance(b, types.TextContent)]
     image_blocks = [b for b in blocks if isinstance(b, types.ImageContent)]
-    
+
     assert len(text_blocks) >= 1, "Should have at least one TextContent"
     assert len(image_blocks) == 1, "Should have exactly one ImageContent"
-    
-    # Verify image block structure
+
+    # 校验图像块结构
     img = image_blocks[0]
     assert img.type == "image"
     assert img.mimeType == "image/png"
-    assert img.data.startswith("iVBORw0KGgo")  # Base64 PNG header
+    assert img.data.startswith("iVBORw0KGgo")  # Base64 PNG 文件头
 
 
 @pytest.mark.integration
 @pytest.mark.image
 def test_multimodal_mime_type_detection() -> None:
-    """Test correct MIME type detection for different image formats.
-    
-    Verifies:
-    - PNG files get image/png
-    - JPEG files get image/jpeg
-    - Detection works from both extension and magic bytes
+    """测试不同图像格式的 MIME 类型检测。
+
+    校验:
+    - PNG 文件返回 image/png
+    - JPEG 文件返回 image/jpeg
+    - 扩展名与魔数字节均可作为检测依据
     """
     import tempfile
     from pathlib import Path
@@ -392,7 +392,7 @@ def test_multimodal_mime_type_detection() -> None:
     assembler = MultimodalAssembler()
     
     test_cases = [
-        # (filename, data_bytes, expected_mime)
+        # (文件名, 数据字节, 预期 MIME)
         ("test.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 50, "image/png"),
         ("test.jpg", b"\xff\xd8\xff\xe0" + b"\x00" * 50, "image/jpeg"),
         ("test.gif", b"GIF89a" + b"\x00" * 50, "image/gif"),

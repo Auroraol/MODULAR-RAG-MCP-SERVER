@@ -1,11 +1,11 @@
-"""Unit tests for VectorUpserter idempotency and correctness.
+"""VectorUpserter 幂等性与正确性的单元测试。
 
-Test Coverage:
-1. Idempotency: Same chunk produces same ID on repeated upserts
-2. Determinism: Chunk ID generation is stable and reproducible
-3. Content sensitivity: Different content produces different IDs
-4. Batch operations: Ordering and correctness with multiple chunks
-5. Error handling: Validation and failure scenarios
+测试覆盖：
+1. 幂等性：同一 chunk 重复 upsert 会产生相同 ID
+2. 确定性：chunk ID 生成稳定且可复现
+3. 内容敏感性：不同内容产生不同 ID
+4. 批量操作：多 chunk 时的顺序与正确性
+5. 错误处理：校验与失败场景
 """
 
 import pytest
@@ -16,12 +16,12 @@ from src.core.settings import Settings
 
 
 # ============================================================================
-# Fixtures
+# 测试夹具
 # ============================================================================
 
 @pytest.fixture
 def mock_settings():
-    """Create mock Settings object with vector_store configuration."""
+    """创建带 vector_store 配置的 Mock Settings 对象。"""
     settings = Mock(spec=Settings)
     settings.vector_store = Mock()
     settings.vector_store.backend = "chroma"
@@ -31,7 +31,7 @@ def mock_settings():
 
 @pytest.fixture
 def mock_vector_store():
-    """Create mock VectorStore that captures upsert calls."""
+    """创建可捕获 upsert 调用的 Mock VectorStore。"""
     mock_store = Mock()
     mock_store.upsert = Mock()
     return mock_store
@@ -39,7 +39,7 @@ def mock_vector_store():
 
 @pytest.fixture
 def upserter_with_mock_store(mock_settings, mock_vector_store):
-    """Create VectorUpserter with mocked vector store."""
+    """创建使用 Mock Vector Store 的 VectorUpserter。"""
     with patch("src.ingestion.storage.vector_upserter.VectorStoreFactory") as mock_factory:
         mock_factory.create.return_value = mock_vector_store
         upserter = VectorUpserter(mock_settings)
@@ -48,9 +48,9 @@ def upserter_with_mock_store(mock_settings, mock_vector_store):
 
 @pytest.fixture
 def sample_chunk():
-    """Create a sample Chunk for testing."""
+    """创建用于测试的示例 Chunk。"""
     return Chunk(
-        id="temp_id",  # Will be replaced by generated ID
+        id="temp_id",  # 将被生成的 ID 替换
         text="This is a test chunk for vector storage.",
         metadata={
             "source_path": "data/documents/test.pdf",
@@ -62,19 +62,19 @@ def sample_chunk():
 
 @pytest.fixture
 def sample_vector():
-    """Create a sample embedding vector."""
+    """创建示例 Embedding 向量。"""
     return [0.1, 0.2, 0.3, 0.4, 0.5]
 
 
 # ============================================================================
-# Chunk ID Generation Tests
+# Chunk ID 生成测试
 # ============================================================================
 
 def test_chunk_id_deterministic(upserter_with_mock_store, sample_chunk):
-    """Test that same chunk produces same ID every time."""
+    """测试同一 chunk 每次都会产生相同 ID。"""
     upserter, _ = upserter_with_mock_store
-    
-    # Generate ID multiple times
+
+    # 多次生成 ID
     id1 = upserter._generate_chunk_id(sample_chunk)
     id2 = upserter._generate_chunk_id(sample_chunk)
     id3 = upserter._generate_chunk_id(sample_chunk)
@@ -83,12 +83,12 @@ def test_chunk_id_deterministic(upserter_with_mock_store, sample_chunk):
 
 
 def test_chunk_id_format(upserter_with_mock_store, sample_chunk):
-    """Test that chunk ID follows expected format."""
+    """测试 chunk ID 遵循预期的格式。"""
     upserter, _ = upserter_with_mock_store
     
     chunk_id = upserter._generate_chunk_id(sample_chunk)
     
-    # Format: {source_hash}_{index:04d}_{content_hash}
+    # 格式：{source_hash}_{index:04d}_{content_hash}
     parts = chunk_id.split("_")
     
     assert len(parts) == 3, "Chunk ID must have 3 parts"
@@ -98,29 +98,29 @@ def test_chunk_id_format(upserter_with_mock_store, sample_chunk):
 
 
 def test_chunk_id_changes_with_content(upserter_with_mock_store, sample_chunk):
-    """Test that different content produces different IDs."""
+    """测试不同内容会产生不同 ID。"""
     upserter, _ = upserter_with_mock_store
-    
+
     id1 = upserter._generate_chunk_id(sample_chunk)
-    
-    # Modify content
+
+    # 修改内容
     sample_chunk.text = "Different content"
     id2 = upserter._generate_chunk_id(sample_chunk)
     
     assert id1 != id2, "Different content must produce different IDs"
     
-    # But source hash and index should remain same
+    # 但来源哈希与索引应保持不变
     assert id1.split("_")[0] == id2.split("_")[0], "Source hash should be same"
     assert id1.split("_")[1] == id2.split("_")[1], "Index should be same"
 
 
 def test_chunk_id_changes_with_index(upserter_with_mock_store, sample_chunk):
-    """Test that different index produces different IDs."""
+    """测试不同索引会产生不同 ID。"""
     upserter, _ = upserter_with_mock_store
-    
+
     id1 = upserter._generate_chunk_id(sample_chunk)
-    
-    # Modify index
+
+    # 修改索引
     sample_chunk.metadata["chunk_index"] = 5
     id2 = upserter._generate_chunk_id(sample_chunk)
     
@@ -130,12 +130,12 @@ def test_chunk_id_changes_with_index(upserter_with_mock_store, sample_chunk):
 
 
 def test_chunk_id_changes_with_source_path(upserter_with_mock_store, sample_chunk):
-    """Test that different source path produces different IDs."""
+    """测试不同来源路径会产生不同 ID。"""
     upserter, _ = upserter_with_mock_store
-    
+
     id1 = upserter._generate_chunk_id(sample_chunk)
-    
-    # Modify source path
+
+    # 修改来源路径
     sample_chunk.metadata["source_path"] = "data/documents/other.pdf"
     id2 = upserter._generate_chunk_id(sample_chunk)
     
@@ -144,26 +144,26 @@ def test_chunk_id_changes_with_source_path(upserter_with_mock_store, sample_chun
 
 
 def test_chunk_id_generation_missing_source_path(upserter_with_mock_store):
-    """Test that missing source_path raises ValueError during Chunk creation."""
+    """测试缺少 source_path 时在 Chunk 创建阶段抛出 ValueError。"""
     upserter, _ = upserter_with_mock_store
-    
-    # Chunk validation will catch this during initialization
+
+    # Chunk 校验会在初始化阶段捕获此问题
     with pytest.raises(ValueError, match="source_path"):
         chunk = Chunk(
             id="temp",
             text="Test",
-            metadata={"chunk_index": 0},  # Missing source_path
+            metadata={"chunk_index": 0},  # 缺少 source_path
         )
 
 
 def test_chunk_id_generation_missing_chunk_index(upserter_with_mock_store):
-    """Test that missing chunk_index raises ValueError."""
+    """测试缺少 chunk_index 会抛出 ValueError。"""
     upserter, _ = upserter_with_mock_store
-    
+
     chunk = Chunk(
         id="temp",
         text="Test",
-        metadata={"source_path": "test.pdf"},  # Missing chunk_index
+        metadata={"source_path": "test.pdf"},  # 缺少 chunk_index
     )
     
     with pytest.raises(ValueError, match="chunk_index"):
@@ -171,20 +171,20 @@ def test_chunk_id_generation_missing_chunk_index(upserter_with_mock_store):
 
 
 # ============================================================================
-# Upsert Tests
+# Upsert 测试
 # ============================================================================
 
 def test_upsert_single_chunk(upserter_with_mock_store, sample_chunk, sample_vector):
-    """Test upserting a single chunk with vector."""
+    """测试 upsert 单个带向量的 chunk。"""
     upserter, mock_store = upserter_with_mock_store
-    
+
     chunk_ids = upserter.upsert([sample_chunk], [sample_vector])
-    
-    # Verify ID returned
+
+    # 验证返回的 ID
     assert len(chunk_ids) == 1
     assert isinstance(chunk_ids[0], str)
     
-    # Verify vector store was called
+    # 验证 Vector Store 被调用
     assert mock_store.upsert.called
     call_args = mock_store.upsert.call_args
     records = call_args[0][0]
@@ -196,9 +196,9 @@ def test_upsert_single_chunk(upserter_with_mock_store, sample_chunk, sample_vect
 
 
 def test_upsert_multiple_chunks(upserter_with_mock_store):
-    """Test upserting multiple chunks maintains order."""
+    """测试 upsert 多个 chunk 时保持顺序。"""
     upserter, mock_store = upserter_with_mock_store
-    
+
     chunks = [
         Chunk(
             id=f"temp{i}",
@@ -208,13 +208,13 @@ def test_upsert_multiple_chunks(upserter_with_mock_store):
         for i in range(5)
     ]
     vectors = [[float(i)] * 5 for i in range(5)]
-    
+
     chunk_ids = upserter.upsert(chunks, vectors)
-    
-    # Verify count and order
+
+    # 验证数量与顺序
     assert len(chunk_ids) == 5
-    
-    # Verify vector store received correct records
+
+    # 验证 Vector Store 收到正确的记录
     records = mock_store.upsert.call_args[0][0]
     assert len(records) == 5
     
@@ -225,24 +225,24 @@ def test_upsert_multiple_chunks(upserter_with_mock_store):
 
 
 def test_upsert_idempotency(upserter_with_mock_store, sample_chunk, sample_vector):
-    """Test that repeated upserts produce same IDs."""
+    """测试重复 upsert 会产生相同 ID。"""
     upserter, mock_store = upserter_with_mock_store
-    
-    # First upsert
+
+    # 第一次 upsert
     ids1 = upserter.upsert([sample_chunk], [sample_vector])
-    
-    # Second upsert (same chunk)
+
+    # 第二次 upsert（同一 chunk）
     ids2 = upserter.upsert([sample_chunk], [sample_vector])
-    
-    # IDs should be identical
+
+    # ID 应完全相同
     assert ids1 == ids2, "Idempotent upsert must produce same IDs"
 
 
 def test_upsert_preserves_metadata(upserter_with_mock_store, sample_chunk, sample_vector):
-    """Test that all metadata is preserved in storage."""
+    """测试所有元数据都会被保留到存储中。"""
     upserter, mock_store = upserter_with_mock_store
-    
-    # Add extra metadata
+
+    # 添加额外的元数据
     sample_chunk.metadata["custom_field"] = "custom_value"
     sample_chunk.metadata["tags"] = ["tag1", "tag2"]
     
@@ -251,19 +251,19 @@ def test_upsert_preserves_metadata(upserter_with_mock_store, sample_chunk, sampl
     records = mock_store.upsert.call_args[0][0]
     metadata = records[0]["metadata"]
     
-    # Verify all original metadata preserved
+    # 验证所有原始元数据都被保留
     assert metadata["source_path"] == "data/documents/test.pdf"
     assert metadata["chunk_index"] == 0
     assert metadata["source_ref"] == "doc_abc123"
     assert metadata["custom_field"] == "custom_value"
     assert metadata["tags"] == ["tag1", "tag2"]
     
-    # Verify text stored
+    # 验证文本已存储
     assert metadata["text"] == sample_chunk.text
 
 
 def test_upsert_empty_chunks_raises_error(upserter_with_mock_store):
-    """Test that empty chunks list raises ValueError."""
+    """测试空 chunk 列表会抛出 ValueError。"""
     upserter, _ = upserter_with_mock_store
     
     with pytest.raises(ValueError, match="empty chunks"):
@@ -271,21 +271,21 @@ def test_upsert_empty_chunks_raises_error(upserter_with_mock_store):
 
 
 def test_upsert_mismatched_lengths_raises_error(upserter_with_mock_store, sample_chunk):
-    """Test that mismatched chunks and vectors lengths raises error."""
+    """测试 chunks 与 vectors 长度不一致会抛出错误。"""
     upserter, _ = upserter_with_mock_store
-    
+
     chunks = [sample_chunk, sample_chunk]
-    vectors = [[0.1, 0.2]]  # Only 1 vector for 2 chunks
+    vectors = [[0.1, 0.2]]  # 2 个 chunk 只有 1 个向量
     
     with pytest.raises(ValueError, match="must match"):
         upserter.upsert(chunks, vectors)
 
 
 def test_upsert_vector_store_failure(upserter_with_mock_store, sample_chunk, sample_vector):
-    """Test that vector store failures are properly wrapped."""
+    """测试 Vector Store 失败会被正确包装。"""
     upserter, mock_store = upserter_with_mock_store
-    
-    # Simulate vector store failure
+
+    # 模拟 Vector Store 失败
     mock_store.upsert.side_effect = Exception("Connection failed")
     
     with pytest.raises(RuntimeError, match="Vector store upsert failed"):
@@ -293,31 +293,31 @@ def test_upsert_vector_store_failure(upserter_with_mock_store, sample_chunk, sam
 
 
 def test_upsert_with_trace_context(upserter_with_mock_store, sample_chunk, sample_vector):
-    """Test that trace context is passed to vector store."""
+    """测试 trace 上下文会被传递给 Vector Store。"""
     upserter, mock_store = upserter_with_mock_store
-    
+
     mock_trace = Mock()
     upserter.upsert([sample_chunk], [sample_vector], trace=mock_trace)
-    
-    # Verify trace was passed to vector store
+
+    # 验证 trace 被传递给 Vector Store
     call_kwargs = mock_store.upsert.call_args[1]
     assert call_kwargs["trace"] == mock_trace
 
 
 # ============================================================================
-# Batch Upsert Tests
+# 批量 Upsert 测试
 # ============================================================================
 
 def test_upsert_batch_single_batch(upserter_with_mock_store):
-    """Test upserting a single batch."""
+    """测试 upsert 单个批次。"""
     upserter, mock_store = upserter_with_mock_store
-    
+
     chunks = [
         Chunk(id="t1", text="C1", metadata={"source_path": "test.pdf", "chunk_index": 0}),
         Chunk(id="t2", text="C2", metadata={"source_path": "test.pdf", "chunk_index": 1}),
     ]
     vectors = [[0.1, 0.2], [0.3, 0.4]]
-    
+
     batches = [(chunks, vectors)]
     chunk_ids = upserter.upsert_batch(batches)
     
@@ -326,9 +326,9 @@ def test_upsert_batch_single_batch(upserter_with_mock_store):
 
 
 def test_upsert_batch_multiple_batches(upserter_with_mock_store):
-    """Test upserting multiple batches preserves order."""
+    """测试 upsert 多个批次时保持顺序。"""
     upserter, mock_store = upserter_with_mock_store
-    
+
     batch1 = (
         [
             Chunk(id="t1", text="C1", metadata={"source_path": "test.pdf", "chunk_index": 0}),
@@ -336,27 +336,27 @@ def test_upsert_batch_multiple_batches(upserter_with_mock_store):
         ],
         [[0.1, 0.2], [0.3, 0.4]],
     )
-    
+
     batch2 = (
         [
             Chunk(id="t3", text="C3", metadata={"source_path": "test.pdf", "chunk_index": 2}),
         ],
         [[0.5, 0.6]],
     )
-    
+
     chunk_ids = upserter.upsert_batch([batch1, batch2])
-    
-    # Should have 3 total chunks
+
+    # 总共应有 3 个 chunk
     assert len(chunk_ids) == 3
-    
-    # Should be single upsert call with flattened data
+
+    # 应只调用一次 upsert，且数据已展平
     assert mock_store.upsert.call_count == 1
     records = mock_store.upsert.call_args[0][0]
     assert len(records) == 3
 
 
 def test_upsert_batch_empty_batches(upserter_with_mock_store):
-    """Test that empty batches list raises error."""
+    """测试空的批次列表会抛出错误。"""
     upserter, _ = upserter_with_mock_store
     
     with pytest.raises(ValueError, match="empty"):
@@ -364,54 +364,54 @@ def test_upsert_batch_empty_batches(upserter_with_mock_store):
 
 
 # ============================================================================
-# Edge Cases
+# 边界情况
 # ============================================================================
 
 def test_chunk_with_unicode_text(upserter_with_mock_store):
-    """Test handling of unicode characters in chunk text."""
+    """测试处理 chunk 文本中的 Unicode 字符。"""
     upserter, mock_store = upserter_with_mock_store
-    
+
     chunk = Chunk(
         id="temp",
         text="测试中文 🚀 émojis αβγ",
         metadata={"source_path": "test.pdf", "chunk_index": 0},
     )
-    
+
     chunk_id = upserter._generate_chunk_id(chunk)
-    
-    # Should not raise, ID should be valid ASCII
+
+    # 不应抛出异常，ID 应为合法的 ASCII
     assert isinstance(chunk_id, str)
     assert chunk_id.isascii()
 
 
 def test_chunk_with_long_source_path(upserter_with_mock_store):
-    """Test handling of very long source paths."""
+    """测试处理超长的来源路径。"""
     upserter, _ = upserter_with_mock_store
-    
+
     long_path = "a" * 500 + ".pdf"
     chunk = Chunk(
         id="temp",
         text="Test",
         metadata={"source_path": long_path, "chunk_index": 0},
     )
-    
+
     chunk_id = upserter._generate_chunk_id(chunk)
-    
-    # ID should still be reasonable length (hash keeps it short)
+
+    # ID 长度仍应合理（哈希会保证其简短）
     assert len(chunk_id) < 50
 
 
 def test_chunk_with_large_index(upserter_with_mock_store):
-    """Test handling of large chunk indices."""
+    """测试处理较大的 chunk 索引。"""
     upserter, _ = upserter_with_mock_store
-    
+
     chunk = Chunk(
         id="temp",
         text="Test",
         metadata={"source_path": "test.pdf", "chunk_index": 9999},
     )
-    
+
     chunk_id = upserter._generate_chunk_id(chunk)
-    
-    # Index should be zero-padded to 4 digits
+
+    # 索引应补零到 4 位
     assert "_9999_" in chunk_id

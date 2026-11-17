@@ -1,22 +1,22 @@
-# New Provider Scaffolding Guide
+# 新 Provider 脚手架指南
 
-When a user selects a provider that is not yet implemented, follow this procedure to auto-scaffold the code. The project uses a plugin architecture — adding a new provider is mechanical.
+当用户选择了尚未实现的 provider 时，按照本流程自动脚手架生成代码。本项目采用插件架构 — 新增 provider 是一个机械性过程。
 
-## Quick Check: Is the Provider Built-in?
+## 快速检查：Provider 是否已内置？
 
-Built-in LLM providers: `openai`, `azure`, `deepseek`, `ollama`
-Built-in Embedding providers: `openai`, `azure`, `ollama`
-Built-in Vision providers: `openai`, `azure`
+内置 LLM provider：`openai`、`azure`、`deepseek`、`ollama`
+内置 Embedding provider：`openai`、`azure`、`ollama`
+内置 Vision provider：`openai`、`azure`
 
-If the provider is NOT in these lists, proceed with scaffolding below.
+如果 provider 不在上述列表中，请继续执行下方的脚手架流程。
 
-## Key Insight: OpenAI-Compatible Providers
+## 关键洞察：OpenAI 兼容的 Provider
 
-Many modern providers (Qwen/DashScope, Gemini, Groq, Mistral, Together AI, etc.) expose an **OpenAI-compatible API**. For these, the implementation is trivial — subclass the existing `OpenAILLM` / `OpenAIEmbedding` and override the base URL + auth.
+许多现代 provider（Qwen/DashScope、Gemini、Groq、Mistral、Together AI 等）都提供 **OpenAI 兼容 API**。对于这些 provider，实现非常简单 — 继承现有的 `OpenAILLM` / `OpenAIEmbedding`，并覆盖 base URL + 认证即可。
 
-## Step 1: Create LLM Provider
+## 步骤 1：创建 LLM Provider
 
-Create `src/libs/llm/{name}_llm.py`:
+创建 `src/libs/llm/{name}_llm.py`：
 
 ```python
 """<ProviderName> LLM implementation (OpenAI-compatible)."""
@@ -61,11 +61,11 @@ class <ProviderName>LLM(OpenAILLM):
         super().__init__(settings, api_key=resolved_key, base_url=resolved_base, **kwargs)
 ```
 
-For providers that are NOT OpenAI-compatible, subclass `BaseLLM` directly and implement `chat()` — refer to `deepseek_llm.py` or `ollama_llm.py` as examples.
+对于不兼容 OpenAI 的 provider，直接继承 `BaseLLM` 并实现 `chat()` — 可参考 `deepseek_llm.py` 或 `ollama_llm.py` 作为示例。
 
-## Step 2: Create Embedding Provider (if needed)
+## 步骤 2：创建 Embedding Provider（如需要）
 
-Create `src/libs/embedding/{name}_embedding.py`:
+创建 `src/libs/embedding/{name}_embedding.py`：
 
 ```python
 """<ProviderName> Embedding implementation (OpenAI-compatible)."""
@@ -104,20 +104,20 @@ class <ProviderName>Embedding(OpenAIEmbedding):
         super().__init__(settings, api_key=resolved_key, base_url=resolved_base, **kwargs)
 ```
 
-## Step 3: Create Vision LLM Provider (if needed)
+## 步骤 3：创建 Vision LLM Provider（如需要）
 
-Create `src/libs/llm/{name}_vision_llm.py` — subclass `OpenAIVisionLLM` with same pattern as Step 1.
+创建 `src/libs/llm/{name}_vision_llm.py` — 继承 `OpenAIVisionLLM`，模式与步骤 1 相同。
 
-## Step 4: Register Providers
+## 步骤 4：注册 Provider
 
-### LLM — append to `src/libs/llm/__init__.py`:
+### LLM — 追加到 `src/libs/llm/__init__.py`：
 
 ```python
 from src.libs.llm.{name}_llm import <ProviderName>LLM, <ProviderName>LLMError
 LLMFactory.register_provider("{name}", <ProviderName>LLM)
 ```
 
-### Embedding — append to `src/libs/embedding/embedding_factory.py` inside `_register_builtin_providers()`:
+### Embedding — 追加到 `src/libs/embedding/embedding_factory.py` 中的 `_register_builtin_providers()`：
 
 ```python
 try:
@@ -127,9 +127,9 @@ except ImportError:
     pass
 ```
 
-Also update `src/libs/embedding/__init__.py` imports and `__all__`.
+同时更新 `src/libs/embedding/__init__.py` 中的导入和 `__all__`。
 
-### Vision — append to `src/libs/llm/llm_factory.py` inside `_register_vision_providers()`:
+### Vision — 追加到 `src/libs/llm/llm_factory.py` 中的 `_register_vision_providers()`：
 
 ```python
 try:
@@ -139,30 +139,30 @@ except ImportError:
     pass
 ```
 
-## Step 5: Verify `base_url` Field Exists in Settings
+## 步骤 5：确认 Settings 中存在 `base_url` 字段
 
-Check `src/core/settings.py` — `LLMSettings` and `EmbeddingSettings` already have `base_url: Optional[str] = None`. No change needed.
+检查 `src/core/settings.py` — `LLMSettings` 和 `EmbeddingSettings` 已包含 `base_url: Optional[str] = None`。无需修改。
 
-## Step 6: Install SDK (if any)
+## 步骤 6：安装 SDK（如有）
 
-Most OpenAI-compatible providers only need `pip install openai` (already installed).
-Provider-specific SDKs if NOT OpenAI-compatible:
-- Qwen: `pip install dashscope` (alternative, but OpenAI-compat mode recommended)
-- Gemini: `pip install google-generativeai` (only if NOT using OpenAI-compat mode)
+大多数 OpenAI 兼容 provider 只需 `pip install openai`（已安装）。
+如果不兼容 OpenAI，则需要 provider 专用 SDK：
+- Qwen：`pip install dashscope`（备选，但推荐使用 OpenAI 兼容模式）
+- Gemini：`pip install google-generativeai`（仅在未使用 OpenAI 兼容模式时需要）
 
-## Provider-Specific Reference
+## Provider 专用参考
 
-| Provider | Base URL (LLM) | Base URL (Embedding) | API Key Env Var | OpenAI-compat |
+| Provider | Base URL (LLM) | Base URL (Embedding) | API Key 环境变量 | 兼容 OpenAI |
 |----------|----------------|----------------------|-----------------|---------------|
-| Qwen     | `https://dashscope.aliyuncs.com/compatible-mode/v1` | same | `DASHSCOPE_API_KEY` | Yes |
-| Gemini   | `https://generativelanguage.googleapis.com/v1beta/openai/` | same | `GEMINI_API_KEY` | Yes |
-| Groq     | `https://api.groq.com/openai/v1` | N/A (no embedding) | `GROQ_API_KEY` | Yes |
-| Mistral  | `https://api.mistral.ai/v1` | same | `MISTRAL_API_KEY` | Yes |
-| Together | `https://api.together.xyz/v1` | same | `TOGETHER_API_KEY` | Yes |
+| Qwen     | `https://dashscope.aliyuncs.com/compatible-mode/v1` | 同上 | `DASHSCOPE_API_KEY` | 是 |
+| Gemini   | `https://generativelanguage.googleapis.com/v1beta/openai/` | 同上 | `GEMINI_API_KEY` | 是 |
+| Groq     | `https://api.groq.com/openai/v1` | 不适用（无 embedding） | `GROQ_API_KEY` | 是 |
+| Mistral  | `https://api.mistral.ai/v1` | 同上 | `MISTRAL_API_KEY` | 是 |
+| Together | `https://api.together.xyz/v1` | 同上 | `TOGETHER_API_KEY` | 是 |
 
-## Validation
+## 验证
 
-After scaffolding, run quick validation:
+完成脚手架后，运行快速验证：
 
 ```python
 python -c "
@@ -174,4 +174,4 @@ print('Vision providers:', LLMFactory.list_vision_providers())
 "
 ```
 
-The new provider should appear in the list. Then proceed with setup Step 3 (Generate Config).
+新 provider 应出现在列表中。然后继续执行 setup 的步骤 3（生成配置）。

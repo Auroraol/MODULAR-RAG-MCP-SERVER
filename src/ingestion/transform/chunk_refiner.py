@@ -1,4 +1,4 @@
-"""Chunk refinement transform: rule-based cleaning + optional LLM enhancement."""
+"""Chunk 精炼变换：基于规则的清洗 + 可选的 LLM 增强。"""
 
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -15,26 +15,26 @@ from src.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Default max parallel workers for LLM calls
+# LLM 调用的默认最大并行工作线程数
 DEFAULT_MAX_WORKERS = 5
 
 
 class ChunkRefiner(BaseTransform):
-    """Refines chunks through rule-based cleaning and optional LLM enhancement.
-    
-    Processing Pipeline:
-        1. Rule-based refine: Remove noise (whitespace, headers/footers, HTML)
-        2. (Optional) LLM refine: Intelligent content improvement
-        3. On LLM failure: Gracefully fallback to rule-based result
-    
-    Configuration (via settings.yaml):
-        - ingestion.chunk_refiner.use_llm: bool - Enable LLM enhancement
-        - ingestion.chunk_refiner.prompt_path: str - Custom prompt file path
-    
-    Design Principles:
-        - Graceful Degradation: LLM errors don't block ingestion
-        - Atomic Processing: Each chunk processed independently
-        - Observable: Records refined_by in metadata
+    """通过基于规则的清洗和可选的 LLM 增强来精炼 Chunk。
+
+    处理 Pipeline:
+        1. 基于规则的精炼：去除噪声（空白、页眉/页脚、HTML）
+        2. （可选）LLM 精炼：智能内容改进
+        3. LLM 失败时：优雅降级为基于规则的结果
+
+    配置（通过 settings.yaml）:
+        - ingestion.chunk_refiner.use_llm: bool - 启用 LLM 增强
+        - ingestion.chunk_refiner.prompt_path: str - 自定义提示词文件路径
+
+    设计原则:
+        - 优雅降级：LLM 错误不会阻塞摄入
+        - 原子处理：每个 Chunk 独立处理
+        - 可观测：在元数据中记录 refined_by
     """
     
     def __init__(
@@ -43,19 +43,19 @@ class ChunkRefiner(BaseTransform):
         llm: Optional[BaseLLM] = None,
         prompt_path: Optional[str] = None
     ):
-        """Initialize ChunkRefiner.
-        
-        Args:
-            settings: Application settings
-            llm: Optional LLM instance (for testing; auto-created if None)
-            prompt_path: Optional custom prompt file path
+        """初始化 ChunkRefiner。
+
+        参数:
+            settings: 应用设置
+            llm: 可选的 LLM 实例（用于测试；为 None 时自动创建）
+            prompt_path: 可选的自定义提示词文件路径
         """
         self.settings = settings
         self._llm = llm
         self._prompt_template: Optional[str] = None
         self._prompt_path = prompt_path or str(resolve_path("config/prompts/chunk_refinement.txt"))
         
-        # Determine if LLM should be used
+        # 确定是否应使用 LLM
         self.use_llm = getattr(
             getattr(settings, 'ingestion', None), 
             'chunk_refiner', 
@@ -64,7 +64,7 @@ class ChunkRefiner(BaseTransform):
         
     @property
     def llm(self) -> Optional[BaseLLM]:
-        """Lazy-load LLM instance."""
+        """延迟加载 LLM 实例。"""
         if self.use_llm and self._llm is None:
             try:
                 self._llm = LLMFactory.create(self.settings)
@@ -79,19 +79,19 @@ class ChunkRefiner(BaseTransform):
         chunks: List[Chunk],
         trace: Optional[TraceContext] = None
     ) -> List[Chunk]:
-        """Transform chunks through refinement pipeline.
-        
-        Args:
-            chunks: List of chunks to refine
-            trace: Optional trace context
-            
-        Returns:
-            List of refined chunks (same length as input)
+        """通过精炼 Pipeline 变换 Chunk。
+
+        参数:
+            chunks: 要精炼的 Chunk 列表
+            trace: 可选的 trace 上下文
+
+        返回:
+            精炼后的 Chunk 列表（长度与输入一致）
         """
         if not chunks:
             return []
-        
-        # Process chunks in parallel if LLM is enabled
+
+        # 若启用 LLM，则并行处理 Chunk
         if self.use_llm and self.llm:
             return self._transform_parallel(chunks, trace)
         else:
@@ -102,20 +102,20 @@ class ChunkRefiner(BaseTransform):
         chunk: Chunk, 
         trace: Optional[TraceContext] = None
     ) -> Tuple[Chunk, str, Optional[str]]:
-        """Refine a single chunk. Thread-safe.
-        
-        Args:
-            chunk: Chunk to refine
-            trace: Optional trace context
-            
-        Returns:
-            Tuple of (refined_chunk, refined_by, error_message)
+        """精炼单个 Chunk。线程安全。
+
+        参数:
+            chunk: 要精炼的 Chunk
+            trace: 可选的 trace 上下文
+
+        返回:
+            (refined_chunk, refined_by, error_message) 元组
         """
         try:
-            # Step 1: Rule-based refinement
+            # 步骤 1: 基于规则的精炼
             rule_refined_text = self._rule_based_refine(chunk.text)
-            
-            # Step 2: LLM enhancement
+
+            # 步骤 2: LLM 增强
             if self.use_llm and self.llm:
                 llm_refined_text = self._llm_refine(rule_refined_text, trace)
                 
@@ -149,7 +149,7 @@ class ChunkRefiner(BaseTransform):
         chunks: List[Chunk], 
         trace: Optional[TraceContext] = None
     ) -> List[Chunk]:
-        """Process chunks in parallel using ThreadPoolExecutor."""
+        """使用 ThreadPoolExecutor 并行处理 Chunk。"""
         max_workers = min(DEFAULT_MAX_WORKERS, len(chunks))
         refined_chunks = [None] * len(chunks)
         llm_enhanced_count = 0
@@ -158,13 +158,13 @@ class ChunkRefiner(BaseTransform):
         logger.debug(f"Processing {len(chunks)} chunks in parallel (max_workers={max_workers})")
         
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all tasks
+            # 提交所有任务
             future_to_idx = {
                 executor.submit(self._refine_single_chunk, chunk, trace): idx
                 for idx, chunk in enumerate(chunks)
             }
             
-            # Collect results
+            # 收集结果
             for future in as_completed(future_to_idx):
                 idx = future_to_idx[future]
                 try:
@@ -204,7 +204,7 @@ class ChunkRefiner(BaseTransform):
         chunks: List[Chunk], 
         trace: Optional[TraceContext] = None
     ) -> List[Chunk]:
-        """Process chunks sequentially (fallback when LLM disabled)."""
+        """顺序处理 Chunk（LLM 禁用时的回退方案）。"""
         refined_chunks = []
         success_count = 0
         llm_enhanced_count = 0
@@ -212,31 +212,31 @@ class ChunkRefiner(BaseTransform):
         
         for chunk in chunks:
             try:
-                # Step 1: Rule-based refinement (always performed)
+                # 步骤 1: 基于规则的精炼（始终执行）
                 rule_refined_text = self._rule_based_refine(chunk.text)
-                
-                # Step 2: Optional LLM enhancement
+
+                # 步骤 2: 可选的 LLM 增强
                 if self.use_llm and self.llm:
                     llm_refined_text = self._llm_refine(rule_refined_text, trace)
-                    
+
                     if llm_refined_text:
-                        # LLM success
+                        # LLM 成功
                         refined_text = llm_refined_text
                         refined_by = "llm"
                         llm_enhanced_count += 1
                     else:
-                        # LLM failed, fallback to rule-based
+                        # LLM 失败，回退到基于规则的结果
                         refined_text = rule_refined_text
                         refined_by = "rule"
                         fallback_count += 1
                         if chunk.metadata:
                             chunk.metadata['refine_fallback_reason'] = "llm_failed"
                 else:
-                    # LLM disabled, use rule-based
+                    # LLM 已禁用，使用基于规则的结果
                     refined_text = rule_refined_text
                     refined_by = "rule"
-                
-                # Create refined chunk
+
+                # 创建精炼后的 Chunk
                 refined_chunk = Chunk(
                     id=chunk.id,
                     text=refined_text,
@@ -250,11 +250,11 @@ class ChunkRefiner(BaseTransform):
                 success_count += 1
                 
             except Exception as e:
-                # Atomic failure: log and preserve original
+                # 原子失败：记录日志并保留原始内容
                 logger.error(f"Failed to refine chunk {chunk.id}: {e}")
                 refined_chunks.append(chunk)
         
-        # Record trace
+        # 记录 trace
         if trace:
             trace.record_stage("chunk_refiner", {
                 "total_chunks": len(chunks),
@@ -273,116 +273,116 @@ class ChunkRefiner(BaseTransform):
         return refined_chunks
     
     def _rule_based_refine(self, text: str) -> str:
-        """Apply rule-based text cleaning.
-        
-        Cleaning operations:
-            1. Remove page headers/footers (separator lines + metadata)
-            2. Remove HTML comments
-            3. Remove HTML tags (preserve content)
-            4. Normalize excessive whitespace
-            5. Preserve code blocks and Markdown formatting
-        
-        Args:
-            text: Raw chunk text
-            
-        Returns:
-            Cleaned text
+        """应用基于规则的文本清洗。
+
+        清洗操作:
+            1. 移除页眉/页脚（分隔线 + 元数据）
+            2. 移除 HTML 注释
+            3. 移除 HTML 标签（保留内容）
+            4. 规范化多余的空白
+            5. 保留代码块和 Markdown 格式
+
+        参数:
+            text: 原始 Chunk 文本
+
+        返回:
+            清洗后的文本
         """
         if not text:
             return text
-        
-        # Early return if only whitespace
+
+        # 若仅含空白则提前返回
         if not text.strip():
             return ""
-        
-        # Preserve code blocks (extract and restore later)
+
+        # 保留代码块（先提取，稍后恢复）
         code_blocks = []
         code_block_pattern = r'```[\s\S]*?```'
-        
+
         def extract_code_block(match):
             code_blocks.append(match.group(0))
             return f"__CODE_BLOCK_{len(code_blocks)-1}__"
-        
+
         text = re.sub(code_block_pattern, extract_code_block, text)
-        
-        # 1. Remove separator lines with page numbers/footers
-        # Pattern: ────────────────
-        # Followed by: Page XX, Footer text, etc.
+
+        # 1. 移除带页码/页脚的分隔线
+        # 模式: ────────────────
+        # 后接: Page XX、Footer text 等
         text = re.sub(
             r'─{10,}.*?(?:Page \d+|Footer|Section \d+|©|Confidential).*?─{10,}',
             '',
             text,
             flags=re.IGNORECASE | re.DOTALL
         )
-        text = re.sub(r'─{10,}', '', text)  # Remove remaining separator lines
-        
-        # 2. Remove HTML comments
+        text = re.sub(r'─{10,}', '', text)  # 移除剩余的分隔线
+
+        # 2. 移除 HTML 注释
         text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
-        
-        # 3. Remove HTML tags (but preserve content)
+
+        # 3. 移除 HTML 标签（但保留内容）
         text = re.sub(r'<[^>]+>', '', text)
-        
-        # 4. Normalize whitespace
-        # - Collapse multiple spaces to single space
+
+        # 4. 规范化空白
+        # - 将多个空格合并为单个空格
         text = re.sub(r' {2,}', ' ', text)
-        
-        # - Collapse 3+ consecutive newlines to 2 (preserve paragraph breaks)
+
+        # - 将 3 个及以上连续换行合并为 2 个（保留段落分隔）
         text = re.sub(r'\n{3,}', '\n\n', text)
-        
-        # 5. Remove leading/trailing whitespace from each line
+
+        # 5. 移除每行的首尾空白
         lines = text.split('\n')
         lines = [line.rstrip() for line in lines]
         text = '\n'.join(lines)
-        
-        # 6. Restore code blocks
+
+        # 6. 恢复代码块
         for i, code_block in enumerate(code_blocks):
             text = text.replace(f"__CODE_BLOCK_{i}__", code_block)
-        
-        # Final cleanup
+
+        # 最终清理
         text = text.strip()
-        
+
         return text
-    
+
     def _llm_refine(
         self,
         text: str,
         trace: Optional[TraceContext] = None
     ) -> Optional[str]:
-        """Apply LLM-based intelligent refinement.
-        
-        Args:
-            text: Rule-refined text
-            trace: Optional trace context
-            
-        Returns:
-            LLM-refined text, or None if refinement failed
+        """应用基于 LLM 的智能精炼。
+
+        参数:
+            text: 经规则精炼后的文本
+            trace: 可选的 trace 上下文
+
+        返回:
+            LLM 精炼后的文本，失败时返回 None
         """
         if not text or not text.strip():
             return text
-        
+
         try:
-            # Load prompt template
+            # 加载提示词模板
             prompt_template = self._load_prompt()
             if not prompt_template:
                 logger.warning("Prompt template not found, skipping LLM refinement")
                 return None
-            
-            # Fill prompt
+
+            # 填充提示词
             if '{text}' not in prompt_template:
                 logger.error("Prompt template missing {text} placeholder")
                 return None
-            
+
             prompt = prompt_template.replace('{text}', text)
-            
-            # Call LLM with Message objects
+
+            # 使用 Message 对象调用 LLM
             messages = [Message(role="user", content=prompt)]
             response = self.llm.chat(messages, trace=trace)
-            
-            # Extract text from ChatResponse
+
+            # 从 ChatResponse 中提取文本
             if isinstance(response, str):
                 refined_text = response
             else:
-                # response is ChatResponse object
+                # response 是 ChatResponse 对象
                 refined_text = response.content
             
             if refined_text and refined_text.strip():
@@ -396,10 +396,10 @@ class ChunkRefiner(BaseTransform):
             return None
     
     def _load_prompt(self) -> Optional[str]:
-        """Load prompt template from file.
-        
-        Returns:
-            Prompt template string, or None if file not found
+        """从文件加载提示词模板。
+
+        返回:
+            提示词模板字符串，文件不存在时返回 None
         """
         if self._prompt_template is not None:
             return self._prompt_template

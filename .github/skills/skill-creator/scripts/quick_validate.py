@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick validation script for skills - minimal version
+Skill 快速校验脚本 - 精简版
 """
 
 import sys
@@ -9,14 +9,14 @@ import re
 try:
     import yaml
 except ImportError:
-    # Fallback: minimal YAML parsing if PyYAML not installed
+    # 兜底：未安装 PyYAML 时使用精简的 YAML 解析
     yaml = None
 
 from pathlib import Path
 
 
 def _parse_frontmatter_fallback(text):
-    """Minimal frontmatter parser when PyYAML is not available."""
+    """PyYAML 不可用时的最简 frontmatter 解析器。"""
     result = {}
     for line in text.strip().splitlines():
         line = line.strip()
@@ -27,27 +27,27 @@ def _parse_frontmatter_fallback(text):
 
 
 def validate_skill(skill_path):
-    """Basic validation of a skill"""
+    """对 skill 进行基本校验"""
     skill_path = Path(skill_path)
 
-    # Check SKILL.md exists
+    # 检查 SKILL.md 是否存在
     skill_md = skill_path / 'SKILL.md'
     if not skill_md.exists():
         return False, "SKILL.md not found"
 
-    # Read and validate frontmatter
+    # 读取并校验 frontmatter
     content = skill_md.read_text(encoding='utf-8')
     if not content.startswith('---'):
         return False, "No YAML frontmatter found"
 
-    # Extract frontmatter
+    # 提取 frontmatter
     match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
     if not match:
         return False, "Invalid frontmatter format"
 
     frontmatter_text = match.group(1)
 
-    # Parse YAML frontmatter
+    # 解析 YAML frontmatter
     try:
         if yaml:
             frontmatter = yaml.safe_load(frontmatter_text)
@@ -58,10 +58,10 @@ def validate_skill(skill_path):
     except Exception as e:
         return False, f"Invalid YAML in frontmatter: {e}"
 
-    # Define allowed properties
+    # 定义允许的属性
     ALLOWED_PROPERTIES = {'name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'}
 
-    # Check for unexpected properties
+    # 检查是否有意外属性
     unexpected_keys = set(frontmatter.keys()) - ALLOWED_PROPERTIES
     if unexpected_keys:
         return False, (
@@ -69,41 +69,41 @@ def validate_skill(skill_path):
             f"Allowed properties are: {', '.join(sorted(ALLOWED_PROPERTIES))}"
         )
 
-    # Check required fields
+    # 检查必需字段
     if 'name' not in frontmatter:
         return False, "Missing 'name' in frontmatter"
     if 'description' not in frontmatter:
         return False, "Missing 'description' in frontmatter"
 
-    # Extract name for validation
+    # 提取 name 用于校验
     name = frontmatter.get('name', '')
     if not isinstance(name, str):
         return False, f"Name must be a string, got {type(name).__name__}"
     name = name.strip()
     if name:
-        # Check naming convention (kebab-case: lowercase with hyphens)
+        # 检查命名规范（kebab-case：小写字母加连字符）
         if not re.match(r'^[a-z0-9-]+$', name):
             return False, f"Name '{name}' should be kebab-case (lowercase letters, digits, and hyphens only)"
         if name.startswith('-') or name.endswith('-') or '--' in name:
             return False, f"Name '{name}' cannot start/end with hyphen or contain consecutive hyphens"
-        # Check name length (max 64 characters per spec)
+        # 检查名称长度（按规范最多 64 个字符）
         if len(name) > 64:
             return False, f"Name is too long ({len(name)} characters). Maximum is 64 characters."
 
-    # Extract and validate description
+    # 提取并校验 description
     description = frontmatter.get('description', '')
     if not isinstance(description, str):
         return False, f"Description must be a string, got {type(description).__name__}"
     description = description.strip()
     if description:
-        # Check for angle brackets
+        # 检查是否包含尖括号
         if '<' in description or '>' in description:
             return False, "Description cannot contain angle brackets (< or >)"
-        # Check description length (max 1024 characters per spec)
+        # 检查 description 长度（按规范最多 1024 个字符）
         if len(description) > 1024:
             return False, f"Description is too long ({len(description)} characters). Maximum is 1024 characters."
 
-    # Validate compatibility field if present (optional)
+    # 若存在可选的 compatibility 字段则校验
     compatibility = frontmatter.get('compatibility', '')
     if compatibility:
         if not isinstance(compatibility, str):

@@ -1,13 +1,12 @@
-"""Composite evaluator that combines multiple evaluators.
+"""组合多个评估器的复合评估器。
 
-This evaluator implements the Composite pattern: it holds a list of
-BaseEvaluator instances, runs them all, and merges their metric
-dictionaries into a single result.
+该评估器实现了 Composite 模式：持有一个 BaseEvaluator 实例列表，
+依次运行它们，并将各自的指标字典合并为单一结果。
 
-Design Principles:
-- Pluggable: Any BaseEvaluator can be composed.
-- Config-Driven: `evaluation.backends: [ragas, custom]` drives composition.
-- Observable: Logs individual evaluator successes/failures.
+设计原则：
+- 可插拔：任意 BaseEvaluator 均可组合。
+- 配置驱动：`evaluation.backends: [ragas, custom]` 驱动组合。
+- 可观测：记录各评估器成功/失败情况。
 """
 
 from __future__ import annotations
@@ -21,16 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 class CompositeEvaluator(BaseEvaluator):
-    """Evaluator that composes multiple evaluators and merges metrics.
+    """组合多个评估器并合并指标的评估器。
 
-    Each sub-evaluator is invoked with the same arguments.  Results are
-    merged into a single metrics dictionary.  If two evaluators produce
-    the same metric key, the later one's value wins (with a warning).
+    每个子评估器均以相同参数调用。结果合并到单一指标字典中。
+    若两个评估器产生相同的指标键，则后者的值胜出（并记录警告）。
 
-    Partial failure is tolerated: if one sub-evaluator fails, its error
-    is logged and the rest still execute.
+    允许部分失败：若某个子评估器失败，其错误会被记录，其余
+    评估器仍照常执行。
 
-    Example::
+    示例::
 
         composite = CompositeEvaluator(evaluators=[
             CustomEvaluator(metrics=["hit_rate", "mrr"]),
@@ -49,16 +47,15 @@ class CompositeEvaluator(BaseEvaluator):
         settings: Any = None,
         **kwargs: Any,
     ) -> None:
-        """Initialize CompositeEvaluator.
+        """初始化 CompositeEvaluator。
 
-        Args:
-            evaluators: Pre-built evaluator instances. If None, built from settings.
-            settings: Application settings (used for config-driven composition).
-            **kwargs: Additional parameters forwarded to sub-evaluators.
+        参数:
+            evaluators: 预先构建的评估器实例。若为 None，则依据 settings 构建。
+            settings: 应用配置（用于配置驱动的组合）。
+            **kwargs: 转发给子评估器的额外参数。
 
-        Raises:
-            ValueError: If no evaluators are provided and settings don't
-                specify backends.
+        异常:
+            ValueError: 未提供评估器且 settings 中未指定 backend 时抛出。
         """
         self.settings = settings
         self.kwargs = kwargs
@@ -83,7 +80,7 @@ class CompositeEvaluator(BaseEvaluator):
 
     @property
     def evaluators(self) -> List[BaseEvaluator]:
-        """Return the list of composed evaluators."""
+        """返回已组合的评估器列表。"""
         return list(self._evaluators)
 
     def evaluate(
@@ -95,21 +92,21 @@ class CompositeEvaluator(BaseEvaluator):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> Dict[str, float]:
-        """Run all sub-evaluators and merge their metrics.
+        """运行所有子评估器并合并其指标。
 
-        Args:
-            query: The user query string.
-            retrieved_chunks: Retrieved chunks or records.
-            generated_answer: Optional generated answer text.
-            ground_truth: Optional ground truth data.
-            trace: Optional TraceContext for observability.
-            **kwargs: Additional parameters.
+        参数:
+            query: 用户查询字符串。
+            retrieved_chunks: 检索到的 chunk 或记录。
+            generated_answer: 可选的生成回答文本。
+            ground_truth: 可选的 ground truth 数据。
+            trace: 可选的 TraceContext，用于可观测性。
+            **kwargs: 额外参数。
 
-        Returns:
-            Merged dictionary of all metric names to float values.
+        返回:
+            所有指标名称到浮点值的合并字典。
 
-        Raises:
-            RuntimeError: If ALL sub-evaluators fail.
+        异常:
+            RuntimeError: 当所有子评估器均失败时抛出。
         """
         self.validate_query(query)
         self.validate_retrieved_chunks(retrieved_chunks)
@@ -157,16 +154,16 @@ class CompositeEvaluator(BaseEvaluator):
 
         return merged
 
-    # ── config-driven builder ────────────────────────────────────
+    # ── 配置驱动的构建器 ────────────────────────────────────────
 
     @staticmethod
     def _build_from_settings(
         settings: Any,
         **kwargs: Any,
     ) -> List[BaseEvaluator]:
-        """Build sub-evaluators from settings.evaluation.backends.
+        """依据 settings.evaluation.backends 构建子评估器。
 
-        Expected config::
+        预期的配置格式::
 
             evaluation:
               enabled: true
@@ -179,12 +176,12 @@ class CompositeEvaluator(BaseEvaluator):
                 - hit_rate
                 - mrr
 
-        Args:
-            settings: Application settings.
-            **kwargs: Forwarded to each sub-evaluator constructor.
+        参数:
+            settings: 应用配置。
+            **kwargs: 转发给各子评估器构造函数。
 
-        Returns:
-            List of BaseEvaluator instances.
+        返回:
+            BaseEvaluator 实例列表。
         """
         if settings is None:
             return []
@@ -203,10 +200,10 @@ class CompositeEvaluator(BaseEvaluator):
         for backend_name in backends:
             backend_name = str(backend_name).strip().lower()
             if backend_name in {"composite", "none", "disabled"}:
-                continue  # avoid infinite recursion / no-ops
+                continue  # 避免无限递归 / 空操作
 
             try:
-                # Create a mock settings with provider overridden
+                # 创建一个覆盖了 provider 的 mock settings
                 from unittest.mock import MagicMock
 
                 sub_settings = MagicMock(wraps=settings)
@@ -214,7 +211,7 @@ class CompositeEvaluator(BaseEvaluator):
                 sub_eval.enabled = True
                 sub_eval.provider = backend_name
                 sub_eval.metrics = getattr(evaluation, "metrics", [])
-                sub_eval.backends = []  # prevent recursion
+                sub_eval.backends = []  # 防止递归
                 sub_settings.evaluation = sub_eval
 
                 evaluator = EvaluatorFactory.create(sub_settings, **kwargs)

@@ -1,6 +1,6 @@
 ---
 name: interview-prep
-description: "针对 Modular RAG MCP Server 项目的模拟技术面试 Agent。读取用户简历（可选），围绕三个方向进行最多 3 轮深度追问，结束后生成并持久化面试报告（含参考答案、包装识别点评、评分）。Use when user says '模拟面试', '面试练习', '帮我面试', 'mock interview', 'interview practice', '面试', '考我', '开始面试', or wants to practice interviewing about this project."
+description: "针对 Modular RAG MCP Server 项目的模拟技术面试 Agent。读取用户简历（可选），围绕三个方向进行最多 3 轮深度追问，结束后生成并持久化面试报告（含参考答案、包装识别点评、评分）。当用户说 '模拟面试'、'面试练习'、'帮我面试'、'mock interview'、'interview practice'、'面试'、'考我'、'开始面试'，或希望围绕本项目进行模拟面试练习时使用。"
 ---
 
 # Interview Prep — Modular RAG MCP Server 模拟面试官

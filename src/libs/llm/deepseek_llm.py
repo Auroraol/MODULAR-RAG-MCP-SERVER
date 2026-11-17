@@ -1,8 +1,7 @@
-"""DeepSeek LLM implementation.
+"""DeepSeek LLM 实现。
 
-This module provides the DeepSeek LLM implementation that works with
-DeepSeek's API. DeepSeek uses an OpenAI-compatible API format but with
-its own endpoint and authentication.
+本模块提供基于 DeepSeek API 的 DeepSeek LLM 实现。
+DeepSeek 使用兼容 OpenAI 的 API 格式，但端点与认证方式独立。
 """
 
 from __future__ import annotations
@@ -14,23 +13,23 @@ from src.libs.llm.base_llm import BaseLLM, ChatResponse, Message
 
 
 class DeepSeekLLMError(RuntimeError):
-    """Raised when DeepSeek API call fails."""
+    """DeepSeek API 调用失败时抛出。"""
 
 
 class DeepSeekLLM(BaseLLM):
-    """DeepSeek LLM provider implementation.
-    
-    This class implements the BaseLLM interface for DeepSeek's chat API.
-    DeepSeek provides an OpenAI-compatible API with its own endpoint.
-    
-    Attributes:
-        api_key: The API key for authentication.
-        base_url: The base URL for the API.
-        model: The model identifier to use.
-        default_temperature: Default temperature for generation.
-        default_max_tokens: Default max tokens for generation.
-    
-    Example:
+    """DeepSeek LLM Provider 实现。
+
+    本类为 DeepSeek 的对话 API 实现 BaseLLM 接口。
+    DeepSeek 提供兼容 OpenAI 的 API，但使用自有端点。
+
+    属性:
+        api_key: 用于认证的 API key。
+        base_url: API 的基础 URL。
+        model: 使用的模型标识符。
+        default_temperature: 生成的默认 temperature。
+        default_max_tokens: 生成的默认最大 Token 数。
+
+    示例:
         >>> from src.core.settings import load_settings
         >>> settings = load_settings('config/settings.yaml')
         >>> llm = DeepSeekLLM(settings)
@@ -46,22 +45,22 @@ class DeepSeekLLM(BaseLLM):
         base_url: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        """Initialize the DeepSeek LLM provider.
-        
-        Args:
-            settings: Application settings containing LLM configuration.
-            api_key: Optional API key override (falls back to env var DEEPSEEK_API_KEY).
-            base_url: Optional base URL override.
-            **kwargs: Additional configuration overrides.
-        
-        Raises:
-            ValueError: If API key is not provided and not found in environment.
+        """初始化 DeepSeek LLM Provider。
+
+        参数:
+            settings: 包含 LLM 配置的应用设置。
+            api_key: 可选的 API key 覆盖值（回退到环境变量 DEEPSEEK_API_KEY）。
+            base_url: 可选的基础 URL 覆盖值。
+            **kwargs: 额外的配置覆盖项。
+
+        异常:
+            ValueError: 未提供 API key 且环境中也未找到时抛出。
         """
         self.model = settings.llm.model
         self.default_temperature = settings.llm.temperature
         self.default_max_tokens = settings.llm.max_tokens
         
-        # API key: explicit > env var
+        # API key：显式传入 > 环境变量
         self.api_key = api_key or os.environ.get("DEEPSEEK_API_KEY")
         if not self.api_key:
             raise ValueError(
@@ -69,10 +68,10 @@ class DeepSeekLLM(BaseLLM):
                 "or pass api_key parameter."
             )
         
-        # Base URL: explicit > default
+        # 基础 URL：显式传入 > 默认值
         self.base_url = base_url or self.DEFAULT_BASE_URL
         
-        # Store any additional kwargs for future use
+        # 保存额外的 kwargs 以备后用
         self._extra_config = kwargs
     
     def chat(
@@ -81,32 +80,32 @@ class DeepSeekLLM(BaseLLM):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> ChatResponse:
-        """Generate a chat completion using DeepSeek API.
-        
-        Args:
-            messages: List of conversation messages.
-            trace: Optional TraceContext for observability (reserved for Stage F).
-            **kwargs: Override parameters (temperature, max_tokens, etc.).
-        
-        Returns:
-            ChatResponse with generated content and metadata.
-        
-        Raises:
-            ValueError: If messages are invalid.
-            DeepSeekLLMError: If API call fails.
+        """使用 DeepSeek API 生成对话补全。
+
+        参数:
+            messages: 对话消息列表。
+            trace: 可选、用于可观测性的 TraceContext（预留给 Stage F）。
+            **kwargs: 覆盖参数（temperature、max_tokens 等）。
+
+        返回:
+            包含生成内容与元数据的 ChatResponse。
+
+        异常:
+            ValueError: 消息非法时抛出。
+            DeepSeekLLMError: API 调用失败时抛出。
         """
-        # Validate input
+        # 校验输入
         self.validate_messages(messages)
         
-        # Prepare request parameters
+        # 准备请求参数
         temperature = kwargs.get("temperature", self.default_temperature)
         max_tokens = kwargs.get("max_tokens", self.default_max_tokens)
         model = kwargs.get("model", self.model)
         
-        # Convert messages to API format
+        # 将消息转换为 API 格式
         api_messages = [{"role": m.role, "content": m.content} for m in messages]
         
-        # Make API call
+        # 发起 API 调用
         try:
             response_data = self._call_api(
                 messages=api_messages,
@@ -115,7 +114,7 @@ class DeepSeekLLM(BaseLLM):
                 max_tokens=max_tokens,
             )
             
-            # Parse response
+            # 解析响应
             content = response_data["choices"][0]["message"]["content"]
             usage = response_data.get("usage")
             
@@ -143,21 +142,21 @@ class DeepSeekLLM(BaseLLM):
         temperature: float,
         max_tokens: int,
     ) -> Dict[str, Any]:
-        """Make the actual API call to DeepSeek.
-        
-        This method is separated to allow easy mocking in tests.
-        
-        Args:
-            messages: Messages in API format.
-            model: Model identifier.
-            temperature: Generation temperature.
-            max_tokens: Maximum tokens to generate.
-        
-        Returns:
-            Raw API response as dictionary.
-        
-        Raises:
-            DeepSeekLLMError: If the API call fails.
+        """向 DeepSeek 发起实际的 API 调用。
+
+        该方法被单独拆分出来，便于在测试中轻松 Mock。
+
+        参数:
+            messages: API 格式的消息。
+            model: 模型标识符。
+            temperature: 生成 temperature。
+            max_tokens: 生成的最大 Token 数。
+
+        返回:
+            以字典形式返回的原始 API 响应。
+
+        异常:
+            DeepSeekLLMError: API 调用失败时抛出。
         """
         import httpx
         
@@ -194,13 +193,13 @@ class DeepSeekLLM(BaseLLM):
             ) from e
     
     def _parse_error_response(self, response: Any) -> str:
-        """Parse error details from API response.
-        
-        Args:
-            response: The HTTP response object.
-        
-        Returns:
-            Human-readable error message.
+        """从 API 响应中解析错误详情。
+
+        参数:
+            response: HTTP 响应对象。
+
+        返回:
+            可读的错误消息。
         """
         try:
             error_data = response.json()

@@ -1,19 +1,18 @@
-"""Ingestion Pipeline orchestrator for the Modular RAG MCP Server.
+"""Modular RAG MCP Server 的 Ingestion Pipeline 编排器。
 
-This module implements the main pipeline that orchestrates the complete
-document ingestion flow:
-    1. File Integrity Check (SHA256 skip check)
-    2. Document Loading (PDF → Document)
-    3. Chunking (Document → Chunks)
-    4. Transform (Refine + Enrich + Caption)
-    5. Encoding (Dense + Sparse vectors)
-    6. Storage (VectorStore + BM25 Index + ImageStorage)
+本模块实现主 Pipeline，编排完整的文档摄入流程：
+    1. 文件完整性检查（SHA256 跳过检查）
+    2. 文档加载（PDF → Document）
+    3. 切分（Document → Chunks）
+    4. Transform（Refine + Enrich + Caption）
+    5. 编码（稠密 + 稀疏向量）
+    6. 存储（VectorStore + BM25 索引 + ImageStorage）
 
-Design Principles:
-- Config-Driven: All components configured via settings.yaml
-- Observable: Logs progress and stage completion
-- Graceful Degradation: LLM failures don't block pipeline
-- Idempotent: SHA256-based skip for unchanged files
+设计原则：
+- 配置驱动：所有组件通过 settings.yaml 配置
+- 可观测：记录进度与阶段完成日志
+- 优雅降级：LLM 失败不会阻塞 Pipeline
+- 幂等：基于 SHA256 跳过未变更的文件
 """
 
 from pathlib import Path
@@ -25,13 +24,13 @@ from src.core.types import Document, Chunk
 from src.core.trace.trace_context import TraceContext
 from src.observability.logger import get_logger
 
-# Libs layer imports
+# Libs 层导入
 from src.libs.loader.file_integrity import SQLiteIntegrityChecker
 from src.libs.loader.pdf_loader import PdfLoader
 from src.libs.embedding.embedding_factory import EmbeddingFactory
 from src.libs.vector_store.vector_store_factory import VectorStoreFactory
 
-# Ingestion layer imports
+# Ingestion 层导入
 from src.ingestion.chunking.document_chunker import DocumentChunker
 from src.ingestion.transform.chunk_refiner import ChunkRefiner
 from src.ingestion.transform.metadata_enricher import MetadataEnricher
@@ -47,17 +46,17 @@ logger = get_logger(__name__)
 
 
 class PipelineResult:
-    """Result of pipeline execution with detailed statistics.
-    
-    Attributes:
-        success: Whether pipeline completed successfully
-        file_path: Path to the processed file
-        doc_id: Document ID (SHA256 hash)
-        chunk_count: Number of chunks generated
-        image_count: Number of images processed
-        vector_ids: List of vector IDs stored
-        error: Error message if pipeline failed
-        stages: Dict of stage names to their individual results
+    """Pipeline 执行结果，包含详细统计信息。
+
+    属性:
+        success: Pipeline 是否成功完成
+        file_path: 被处理文件的路径
+        doc_id: 文档 ID（SHA256 哈希）
+        chunk_count: 生成的 Chunk 数量
+        image_count: 处理的图片数量
+        vector_ids: 已存储的向量 ID 列表
+        error: Pipeline 失败时的错误信息
+        stages: 阶段名称到各阶段结果的字典
     """
     
     def __init__(
@@ -81,7 +80,7 @@ class PipelineResult:
         self.stages = stages or {}
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
+        """转换为字典以便序列化。"""
         return {
             "success": self.success,
             "file_path": self.file_path,
@@ -95,21 +94,21 @@ class PipelineResult:
 
 
 class IngestionPipeline:
-    """Main pipeline orchestrator for document ingestion.
-    
-    This class coordinates all stages of the ingestion process:
-    - File integrity checking for incremental processing
-    - Document loading (PDF with image extraction)
-    - Text chunking with configurable splitter
-    - Chunk refinement (rule-based + LLM)
-    - Metadata enrichment (rule-based + LLM)
-    - Image captioning (Vision LLM)
-    - Dense embedding (Azure text-embedding-ada-002)
-    - Sparse encoding (BM25 term statistics)
-    - Vector storage (ChromaDB)
-    - BM25 index building
-    
-    Example:
+    """文档摄入的主 Pipeline 编排器。
+
+    该类协调摄入过程的所有阶段：
+    - 文件完整性检查，用于增量处理
+    - 文档加载（PDF 含图片抽取）
+    - 可配置切分器的文本切分
+    - Chunk 精炼（规则 + LLM）
+    - 元数据增强（规则 + LLM）
+    - 图片描述生成（Vision LLM）
+    - 稠密 Embedding（Azure text-embedding-ada-002）
+    - 稀疏编码（BM25 词项统计）
+    - 向量存储（ChromaDB）
+    - BM25 索引构建
+
+    示例:
         >>> from src.core.settings import load_settings
         >>> settings = load_settings("config/settings.yaml")
         >>> pipeline = IngestionPipeline(settings)
@@ -123,36 +122,36 @@ class IngestionPipeline:
         collection: str = "default",
         force: bool = False
     ):
-        """Initialize pipeline with all components.
-        
-        Args:
-            settings: Application settings from settings.yaml
-            collection: Collection name for organizing documents
-            force: If True, re-process even if file was previously processed
+        """初始化 Pipeline 及其所有组件。
+
+        参数:
+            settings: 来自 settings.yaml 的应用配置
+            collection: 用于组织文档的 Collection 名称
+            force: 为 True 时即使文件此前已处理过也重新处理
         """
         self.settings = settings
         self.collection = collection
         self.force = force
         
-        # Initialize all components
+        # 初始化所有组件
         logger.info("Initializing Ingestion Pipeline components...")
         
-        # Stage 1: File Integrity
+        # 阶段 1: 文件完整性检查
         self.integrity_checker = SQLiteIntegrityChecker(db_path=str(resolve_path("data/db/ingestion_history.db")))
         logger.info("  ✓ FileIntegrityChecker initialized")
         
-        # Stage 2: Loader
+        # 阶段 2: 加载器
         self.loader = PdfLoader(
             extract_images=True,
             image_storage_dir=str(resolve_path(f"data/images/{collection}"))
         )
         logger.info("  ✓ PdfLoader initialized")
         
-        # Stage 3: Chunker
+        # 阶段 3: 切分器
         self.chunker = DocumentChunker(settings)
         logger.info("  ✓ DocumentChunker initialized")
         
-        # Stage 4: Transforms
+        # 阶段 4: Transform 组件
         self.chunk_refiner = ChunkRefiner(settings)
         logger.info(f"  ✓ ChunkRefiner initialized (use_llm={self.chunk_refiner.use_llm})")
         
@@ -163,7 +162,7 @@ class IngestionPipeline:
         has_vision = self.image_captioner.llm is not None
         logger.info(f"  ✓ ImageCaptioner initialized (vision_enabled={has_vision})")
         
-        # Stage 5: Encoders
+        # 阶段 5: 编码器
         embedding = EmbeddingFactory.create(settings)
         batch_size = settings.ingestion.batch_size if settings.ingestion else 100
         self.dense_encoder = DenseEncoder(embedding, batch_size=batch_size)
@@ -179,7 +178,7 @@ class IngestionPipeline:
         )
         logger.info(f"  ✓ BatchProcessor initialized (batch_size={batch_size})")
         
-        # Stage 6: Storage
+        # 阶段 6: 存储
         self.vector_upserter = VectorUpserter(settings, collection_name=collection)
         logger.info(f"  ✓ VectorUpserter initialized (provider={settings.vector_store.provider}, collection={collection})")
         
@@ -200,18 +199,18 @@ class IngestionPipeline:
         trace: Optional[TraceContext] = None,
         on_progress: Optional[Callable[[str, int, int], None]] = None,
     ) -> PipelineResult:
-        """Execute the full ingestion pipeline on a file.
-        
-        Args:
-            file_path: Path to the file to process (e.g., PDF)
-            trace: Optional trace context for observability
-            on_progress: Optional callback ``(stage_name, current, total)``
-                invoked when each pipeline stage completes.  *current* is
-                the 1-based index of the completed stage; *total* is the
-                number of stages (currently 6).
-        
-        Returns:
-            PipelineResult with success status and statistics
+        """对文件执行完整的摄入 Pipeline。
+
+        参数:
+            file_path: 待处理文件的路径（例如 PDF）
+            trace: 可选的 Trace 上下文，用于可观测性
+            on_progress: 可选回调 ``(stage_name, current, total)``，
+                在每个 Pipeline 阶段完成时调用。*current* 是
+                已完成阶段的 1 基索引；*total* 是阶段总数
+                （当前为 6）。
+
+        返回:
+            包含成功状态与统计信息的 PipelineResult
         """
         file_path = Path(file_path)
         stages: Dict[str, Any] = {}
@@ -228,7 +227,7 @@ class IngestionPipeline:
         
         try:
             # ─────────────────────────────────────────────────────────────
-            # Stage 1: File Integrity Check
+            # 阶段 1: 文件完整性检查
             # ─────────────────────────────────────────────────────────────
             logger.info("\n📋 Stage 1: File Integrity Check")
             _notify("integrity", 1)
@@ -249,7 +248,7 @@ class IngestionPipeline:
             logger.info("  ✓ File needs processing")
             
             # ─────────────────────────────────────────────────────────────
-            # Stage 2: Document Loading
+            # 阶段 2: 文档加载
             # ─────────────────────────────────────────────────────────────
             logger.info("\n📄 Stage 2: Document Loading")
             _notify("load", 2)
@@ -281,7 +280,7 @@ class IngestionPipeline:
                 }, elapsed_ms=_elapsed)
             
             # ─────────────────────────────────────────────────────────────
-            # Stage 3: Chunking
+            # 阶段 3: 切分
             # ─────────────────────────────────────────────────────────────
             logger.info("\n✂️  Stage 3: Document Chunking")
             _notify("split", 3)
@@ -316,29 +315,29 @@ class IngestionPipeline:
                 }, elapsed_ms=_elapsed)
             
             # ─────────────────────────────────────────────────────────────
-            # Stage 4: Transform Pipeline
+            # 阶段 4: Transform 流水线
             # ─────────────────────────────────────────────────────────────
             logger.info("\n🔄 Stage 4: Transform Pipeline")
             _notify("transform", 4)
             
-            # 4a: Chunk Refinement
+            # 4a: Chunk 精炼
             logger.info("  4a. Chunk Refinement...")
             _t0_transform = time.monotonic()
-            # snapshot before refinement
+            # 精炼前快照
             _pre_refine_texts = {c.id: c.text for c in chunks}
             chunks = self.chunk_refiner.transform(chunks, trace)
             refined_by_llm = sum(1 for c in chunks if c.metadata.get("refined_by") == "llm")
             refined_by_rule = sum(1 for c in chunks if c.metadata.get("refined_by") == "rule")
             logger.info(f"      LLM refined: {refined_by_llm}, Rule refined: {refined_by_rule}")
             
-            # 4b: Metadata Enrichment
+            # 4b: 元数据增强
             logger.info("  4b. Metadata Enrichment...")
             chunks = self.metadata_enricher.transform(chunks, trace)
             enriched_by_llm = sum(1 for c in chunks if c.metadata.get("enriched_by") == "llm")
             enriched_by_rule = sum(1 for c in chunks if c.metadata.get("enriched_by") == "rule")
             logger.info(f"      LLM enriched: {enriched_by_llm}, Rule enriched: {enriched_by_rule}")
             
-            # 4c: Image Captioning
+            # 4c: 图片描述生成
             logger.info("  4c. Image Captioning...")
             chunks = self.image_captioner.transform(chunks, trace)
             captioned = sum(1 for c in chunks if c.metadata.get("image_captions"))
@@ -375,12 +374,12 @@ class IngestionPipeline:
                 }, elapsed_ms=_elapsed_transform)
             
             # ─────────────────────────────────────────────────────────────
-            # Stage 5: Encoding
+            # 阶段 5: 编码
             # ─────────────────────────────────────────────────────────────
             logger.info("\n🔢 Stage 5: Encoding")
             _notify("embed", 5)
             
-            # Process through BatchProcessor
+            # 通过 BatchProcessor 处理
             _t0 = time.monotonic()
             batch_result = self.batch_processor.process(chunks, trace)
             _elapsed = (time.monotonic() - _t0) * 1000.0
@@ -397,22 +396,22 @@ class IngestionPipeline:
                 "sparse_doc_count": len(sparse_stats)
             }
             if trace is not None:
-                # Build per-chunk encoding details (both dense & sparse)
+                # 构建每个 Chunk 的编码详情（稠密与稀疏）
                 chunk_details = []
                 for idx, c in enumerate(chunks):
                     detail: dict = {
                         "chunk_id": c.id,
                         "char_len": len(c.text),
                     }
-                    # Dense: vector dimension (same for all, but confirm per-chunk)
+                    # 稠密：向量维度（所有 Chunk 相同，但逐个确认）
                     if idx < len(dense_vectors):
                         detail["dense_dim"] = len(dense_vectors[idx])
-                    # Sparse: BM25 term stats
+                    # 稀疏：BM25 词项统计
                     if idx < len(sparse_stats):
                         ss = sparse_stats[idx]
                         detail["doc_length"] = ss.get("doc_length", 0)
                         detail["unique_terms"] = ss.get("unique_terms", 0)
-                        # Top-10 terms by frequency for inspection
+                        # 按词频排序的 Top-10 词项，用于检查
                         tf = ss.get("term_frequencies", {})
                         top_terms = sorted(tf.items(), key=lambda x: x[1], reverse=True)[:10]
                         detail["top_terms"] = [{"term": t, "freq": f} for t, f in top_terms]
@@ -427,23 +426,23 @@ class IngestionPipeline:
                 }, elapsed_ms=_elapsed)
             
             # ─────────────────────────────────────────────────────────────
-            # Stage 6: Storage
+            # 阶段 6: 存储
             # ─────────────────────────────────────────────────────────────
             logger.info("\n💾 Stage 6: Storage")
             _notify("upsert", 6)
             
-            # 6a: Vector Upsert
+            # 6a: 向量写入
             logger.info("  6a. Vector Storage (ChromaDB)...")
             _t0_storage = time.monotonic()
             vector_ids = self.vector_upserter.upsert(chunks, dense_vectors, trace)
             logger.info(f"      Stored {len(vector_ids)} vectors")
 
-            # Align BM25 chunk_ids with Chroma vector IDs so the SparseRetriever
-            # can look up BM25 hits in the vector store after retrieval.
+            # 将 BM25 的 chunk_id 与 Chroma 向量 ID 对齐，以便
+            # SparseRetriever 在检索后能在向量存储中查到 BM25 命中项。
             for stat, vid in zip(sparse_stats, vector_ids):
                 stat["chunk_id"] = vid
 
-            # 6b: BM25 Index
+            # 6b: BM25 索引
             logger.info("  6b. BM25 Index...")
             self.bm25_indexer.add_documents(
                 sparse_stats,
@@ -453,8 +452,8 @@ class IngestionPipeline:
             )
             logger.info(f"      Index built for {len(sparse_stats)} documents")
             
-            # 6c: Register images in image storage index
-            # Note: Images are already saved by PdfLoader, we just need to index them
+            # 6c: 在图片存储索引中登记图片
+            # 注意：图片已由 PdfLoader 保存，这里只需为其建立索引
             logger.info("  6c. Image Storage Index...")
             images = document.metadata.get("images", [])
             for img in images:
@@ -476,7 +475,7 @@ class IngestionPipeline:
             }
             _elapsed_storage = (time.monotonic() - _t0_storage) * 1000.0
             if trace is not None:
-                # Per-chunk storage mapping: chunk_id → vector_id
+                # 每个 Chunk 的存储映射：chunk_id → vector_id
                 chunk_storage = [
                     {
                         "chunk_id": c.id,
@@ -486,7 +485,7 @@ class IngestionPipeline:
                     }
                     for i, c in enumerate(chunks)
                 ]
-                # Image storage details
+                # 图片存储详情
                 image_storage_details = [
                     {
                         "image_id": img["id"],
@@ -518,7 +517,7 @@ class IngestionPipeline:
                 }, elapsed_ms=_elapsed_storage)
             
             # ─────────────────────────────────────────────────────────────
-            # Mark Success
+            # 标记成功
             # ─────────────────────────────────────────────────────────────
             self.integrity_checker.mark_success(file_hash, str(file_path), self.collection)
             
@@ -552,7 +551,7 @@ class IngestionPipeline:
             )
     
     def close(self) -> None:
-        """Clean up resources."""
+        """清理资源。"""
         self.image_storage.close()
 
 
@@ -562,16 +561,16 @@ def run_pipeline(
     collection: str = "default",
     force: bool = False
 ) -> PipelineResult:
-    """Convenience function to run the pipeline.
-    
-    Args:
-        file_path: Path to file to process
-        settings_path: Path to settings.yaml (default: <repo>/config/settings.yaml)
-        collection: Collection name
-        force: Force reprocessing
-    
-    Returns:
-        PipelineResult with execution details
+    """便捷函数，用于运行 Pipeline。
+
+    参数:
+        file_path: 待处理文件的路径
+        settings_path: settings.yaml 的路径（默认：<repo>/config/settings.yaml）
+        collection: Collection 名称
+        force: 强制重新处理
+
+    返回:
+        包含执行详情的 PipelineResult
     """
     settings = load_settings(settings_path)
     pipeline = IngestionPipeline(settings, collection=collection, force=force)

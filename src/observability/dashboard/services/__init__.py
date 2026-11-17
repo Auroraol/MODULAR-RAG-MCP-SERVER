@@ -1,1 +1,1 @@
-"""Dashboard services package."""
+"""Dashboard 服务包。"""

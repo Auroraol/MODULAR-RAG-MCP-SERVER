@@ -1,7 +1,7 @@
-"""ChromaDB VectorStore implementation.
+"""ChromaDB 的 VectorStore 实现。
 
-This module provides a concrete implementation of BaseVectorStore using ChromaDB,
-a lightweight, open-source embedding database designed for local-first deployment.
+本模块使用 ChromaDB 提供 BaseVectorStore 的具体实现。
+ChromaDB 是一个轻量、开源的 Embedding 数据库，面向本地优先部署。
 """
 
 from __future__ import annotations
@@ -27,25 +27,25 @@ logger = logging.getLogger(__name__)
 
 
 class ChromaStore(BaseVectorStore):
-    """ChromaDB implementation of VectorStore.
-    
-    This class provides local-first, persistent vector storage using ChromaDB.
-    It supports upsert, query, and metadata filtering operations.
-    
-    Design Principles Applied:
-    - Pluggable: Implements BaseVectorStore interface, swappable with other providers.
-    - Config-Driven: All settings (persist_directory, collection_name) from settings.yaml.
-    - Idempotent: upsert operations with same ID overwrite existing records.
-    - Observable: Accepts optional TraceContext (reserved for Stage F).
-    - Fail-Fast: Validates dependencies and configuration on initialization.
-    
-    Attributes:
-        client: ChromaDB client instance.
-        collection: ChromaDB collection for storing vectors.
-        collection_name: Name of the collection.
-        persist_directory: Directory path for persistent storage.
-    
-    Example:
+    """VectorStore 的 ChromaDB 实现。
+
+    此类使用 ChromaDB 提供本地优先的持久化向量存储。
+    支持 upsert、query 与元数据过滤操作。
+
+    应用的设计原则：
+    - 可插拔：实现 BaseVectorStore 接口，可与其他 provider 互换。
+    - 配置驱动：所有设置（persist_directory、collection_name）均来自 settings.yaml。
+    - 幂等：相同 ID 的 upsert 操作会覆盖已有记录。
+    - 可观测：接受可选的 TraceContext（预留给阶段 F）。
+    - 快速失败：初始化时校验依赖与配置。
+
+    属性:
+        client: ChromaDB 客户端实例。
+        collection: 用于存储向量的 ChromaDB collection。
+        collection_name: collection 名称。
+        persist_directory: 持久化存储的目录路径。
+
+    示例:
         >>> settings = Settings.load('config/settings.yaml')
         >>> store = ChromaStore(settings=settings)
         >>> records = [
@@ -60,16 +60,16 @@ class ChromaStore(BaseVectorStore):
     """
     
     def __init__(self, settings: Settings, **kwargs: Any) -> None:
-        """Initialize ChromaStore with configuration.
-        
-        Args:
-            settings: Application settings containing vector_store configuration.
-            **kwargs: Optional overrides for collection_name or persist_directory.
-        
-        Raises:
-            ImportError: If chromadb package is not installed.
-            ValueError: If required configuration is missing.
-            RuntimeError: If ChromaDB client initialization fails.
+        """使用配置初始化 ChromaStore。
+
+        参数:
+            settings: 包含 vector_store 配置的应用设置。
+            **kwargs: 可选的 collection_name 或 persist_directory 覆盖。
+
+        异常:
+            ImportError: 当未安装 chromadb 包时。
+            ValueError: 当缺少必需配置时。
+            RuntimeError: 当 ChromaDB 客户端初始化失败时。
         """
         if not CHROMADB_AVAILABLE:
             raise ImportError(
@@ -77,7 +77,7 @@ class ChromaStore(BaseVectorStore):
                 "Install it with: pip install chromadb"
             )
         
-        # Extract configuration
+        # 提取配置
         try:
             vector_store_config = settings.vector_store
         except AttributeError as e:
@@ -86,20 +86,20 @@ class ChromaStore(BaseVectorStore):
                 "Please ensure 'vector_store' section exists in settings.yaml"
             ) from e
         
-        # Collection name (allow override)
+        # collection 名称（允许覆盖）
         self.collection_name = kwargs.get(
             'collection_name',
             getattr(vector_store_config, 'collection_name', 'knowledge_hub')
         )
         
-        # Persist directory (allow override)
+        # 持久化目录（允许覆盖）
         persist_dir_str = kwargs.get(
             'persist_directory',
             getattr(vector_store_config, 'persist_directory', './data/db/chroma')
         )
         self.persist_directory = resolve_path(persist_dir_str)
         
-        # Ensure persist directory exists
+        # 确保持久化目录存在
         self.persist_directory.mkdir(parents=True, exist_ok=True)
         
         logger.info(
@@ -107,7 +107,7 @@ class ChromaStore(BaseVectorStore):
             f"persist_directory='{self.persist_directory}'"
         )
         
-        # Initialize ChromaDB client with persistent storage
+        # 初始化带持久化存储的 ChromaDB 客户端
         try:
             self.client = chromadb.PersistentClient(
                 path=str(self.persist_directory),
@@ -121,11 +121,11 @@ class ChromaStore(BaseVectorStore):
                 f"Failed to initialize ChromaDB client at '{self.persist_directory}': {e}"
             ) from e
         
-        # Get or create collection
+        # 获取或创建 collection
         try:
             self.collection = self.client.get_or_create_collection(
                 name=self.collection_name,
-                metadata={"hnsw:space": "cosine"}  # Use cosine similarity
+                metadata={"hnsw:space": "cosine"}  # 使用余弦相似度
             )
         except Exception as e:
             raise RuntimeError(
@@ -143,50 +143,50 @@ class ChromaStore(BaseVectorStore):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
-        """Insert or update records in ChromaDB.
-        
-        Args:
-            records: List of records to upsert. Each record must have:
-                - 'id': Unique identifier (str)
-                - 'vector': Embedding vector (List[float])
-                - 'metadata': Optional metadata dict
-            trace: Optional TraceContext for observability (reserved for Stage F).
-            **kwargs: Provider-specific parameters (unused for Chroma).
-        
-        Raises:
-            ValueError: If records list is empty or contains invalid entries.
-            RuntimeError: If the upsert operation fails.
+        """在 ChromaDB 中插入或更新记录。
+
+        参数:
+            records: 待 upsert 的记录列表。每条记录必须包含：
+                - 'id'：唯一标识符（str）
+                - 'vector'：Embedding 向量（List[float]）
+                - 'metadata'：可选的元数据 dict
+            trace: 可选的 TraceContext，用于可观测性（预留给阶段 F）。
+            **kwargs: provider 特定参数（Chroma 中未使用）。
+
+        异常:
+            ValueError: 当记录列表为空或包含无效项时。
+            RuntimeError: 当 upsert 操作失败时。
         """
-        # Validate records
+        # 校验记录
         self.validate_records(records)
-        
-        # Prepare data for ChromaDB
+
+        # 为 ChromaDB 准备数据
         ids = []
         embeddings = []
         metadatas = []
-        documents = []  # ChromaDB requires documents field
-        
+        documents = []  # ChromaDB 要求 documents 字段
+
         for record in records:
             ids.append(str(record['id']))
             embeddings.append(record['vector'])
-            
-            # Metadata: extract or default to empty dict
+
+            # 元数据：提取或默认为空 dict
             metadata = record.get('metadata', {})
-            # Ensure all metadata values are JSON-serializable
-            # ChromaDB requires string, int, float, or bool values
+            # 确保所有元数据值都可被 JSON 序列化
+            # ChromaDB 要求值为 str、int、float 或 bool
             sanitized_metadata = self._sanitize_metadata(metadata)
-            
-            # ChromaDB requires non-empty metadata dict
+
+            # ChromaDB 要求元数据 dict 非空
             if not sanitized_metadata:
                 sanitized_metadata = {'_placeholder': 'true'}
-            
+
             metadatas.append(sanitized_metadata)
-            
-            # Document: use metadata.text if available, otherwise use id
+
+            # 文档：若可用则使用 metadata.text，否则使用 id
             document = metadata.get('text', record['id'])
             documents.append(str(document))
-        
-        # Perform upsert (ChromaDB's add() is idempotent with same IDs)
+
+        # 执行 upsert（ChromaDB 的 add() 对相同 ID 是幂等的）
         try:
             self.collection.upsert(
                 ids=ids,
@@ -208,33 +208,33 @@ class ChromaStore(BaseVectorStore):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
-        """Query ChromaDB for similar vectors.
-        
-        Args:
-            vector: Query vector (embedding) to search for.
-            top_k: Maximum number of results to return.
-            filters: Optional metadata filters (e.g., {'source': 'doc1.pdf'}).
-            trace: Optional TraceContext for observability (reserved for Stage F).
-            **kwargs: Provider-specific parameters (unused for Chroma).
-        
-        Returns:
-            List of matching records, sorted by similarity (descending).
-            Each record contains:
-                - 'id': Record identifier
-                - 'score': Similarity score (1.0 = identical, 0.0 = orthogonal)
-                - 'metadata': Associated metadata
-        
-        Raises:
-            ValueError: If vector is empty or top_k is invalid.
-            RuntimeError: If the query operation fails.
+        """在 ChromaDB 中查询相似向量。
+
+        参数:
+            vector: 待检索的查询向量（Embedding）。
+            top_k: 返回结果的最大数量。
+            filters: 可选的元数据过滤条件（如 {'source': 'doc1.pdf'}）。
+            trace: 可选的 TraceContext，用于可观测性（预留给阶段 F）。
+            **kwargs: provider 特定参数（Chroma 中未使用）。
+
+        返回:
+            匹配的记录列表，按相似度降序排列。
+            每条记录包含：
+                - 'id'：记录标识符
+                - 'score'：相似度分数（1.0 = 相同，0.0 = 正交）
+                - 'metadata'：关联的元数据
+
+        异常:
+            ValueError: 当向量为空或 top_k 无效时。
+            RuntimeError: 当查询操作失败时。
         """
-        # Validate query parameters
+        # 校验查询参数
         self.validate_query_vector(vector, top_k)
-        
-        # Build ChromaDB where clause from filters
+
+        # 根据过滤条件构建 ChromaDB where 子句
         where_clause = self._build_where_clause(filters) if filters else None
-        
-        # Perform query
+
+        # 执行查询
         try:
             results = self.collection.query(
                 query_embeddings=[vector],
@@ -247,8 +247,8 @@ class ChromaStore(BaseVectorStore):
                 f"Failed to query ChromaDB with top_k={top_k}: {e}"
             ) from e
         
-        # Transform results to standard format
-        # ChromaDB returns nested lists: [[id1, id2, ...]]
+        # 将结果转换为标准格式
+        # ChromaDB 返回嵌套列表：[[id1, id2, ...]]
         output = []
         
         if results and results['ids'] and results['ids'][0]:
@@ -258,16 +258,16 @@ class ChromaStore(BaseVectorStore):
             documents = results['documents'][0] if 'documents' in results else [''] * len(ids)
             
             for i, record_id in enumerate(ids):
-                # Convert distance to similarity score
-                # ChromaDB returns cosine distance (0=identical, 2=opposite)
-                # Convert to similarity: score = 1 - (distance / 2)
+                # 将距离转换为相似度分数
+                # ChromaDB 返回余弦距离（0=相同，2=相反）
+                # 转换为相似度：score = 1 - (distance / 2)
                 distance = distances[i]
                 score = 1.0 - (distance / 2.0)
-                
+
                 output.append({
                     'id': record_id,
-                    'score': max(0.0, score),  # Clamp to [0, 1]
-                    'text': documents[i] if documents[i] else '',  # Include text from documents
+                    'score': max(0.0, score),  # 限制到 [0, 1]
+                    'text': documents[i] if documents[i] else '',  # 包含 documents 中的文本
                     'metadata': metadatas[i] if metadatas[i] else {}
                 })
         
@@ -280,16 +280,16 @@ class ChromaStore(BaseVectorStore):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
-        """Delete records from ChromaDB by IDs.
-        
-        Args:
-            ids: List of record IDs to delete.
-            trace: Optional TraceContext for observability.
-            **kwargs: Provider-specific parameters.
-        
-        Raises:
-            ValueError: If ids list is empty.
-            RuntimeError: If the delete operation fails.
+        """按 ID 从 ChromaDB 中删除记录。
+
+        参数:
+            ids: 待删除的记录 ID 列表。
+            trace: 可选的 TraceContext，用于可观测性。
+            **kwargs: provider 特定参数。
+
+        异常:
+            ValueError: 当 ids 列表为空时。
+            RuntimeError: 当删除操作失败时。
         """
         if not ids:
             raise ValueError("IDs list cannot be empty")
@@ -308,20 +308,20 @@ class ChromaStore(BaseVectorStore):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
-        """Clear all records from the ChromaDB collection.
-        
-        Args:
-            collection_name: Optional collection name to clear. If None, clears current collection.
-            trace: Optional TraceContext for observability.
-            **kwargs: Provider-specific parameters.
-        
-        Raises:
-            RuntimeError: If the clear operation fails.
+        """清空 ChromaDB collection 中的所有记录。
+
+        参数:
+            collection_name: 可选的待清空 collection 名称。若为 None，则清空当前 collection。
+            trace: 可选的 TraceContext，用于可观测性。
+            **kwargs: provider 特定参数。
+
+        异常:
+            RuntimeError: 当清空操作失败时。
         """
         try:
             target_collection = collection_name or self.collection_name
-            
-            # Delete and recreate collection (most efficient way to clear in Chroma)
+
+            # 删除并重建 collection（Chroma 中最高效的清空方式）
             self.client.delete_collection(name=target_collection)
             self.collection = self.client.get_or_create_collection(
                 name=target_collection,
@@ -338,26 +338,26 @@ class ChromaStore(BaseVectorStore):
         filter_dict: Dict[str, Any],
         trace: Optional[Any] = None,
     ) -> int:
-        """Delete records matching a metadata filter.
+        """删除匹配元数据过滤条件的记录。
 
-        Args:
-            filter_dict: Metadata key/value pairs to match
-                (e.g. ``{"source_hash": "abc123"}``).
-            trace: Optional TraceContext for observability.
+        参数:
+            filter_dict: 待匹配的元数据键值对
+                （如 ``{"source_hash": "abc123"}``）。
+            trace: 可选的 TraceContext，用于可观测性。
 
-        Returns:
-            Number of records deleted.
+        返回:
+            已删除的记录数量。
 
-        Raises:
-            ValueError: If *filter_dict* is empty.
-            RuntimeError: If the operation fails.
+        异常:
+            ValueError: 当 *filter_dict* 为空时。
+            RuntimeError: 当操作失败时。
         """
         if not filter_dict:
             raise ValueError("filter_dict cannot be empty")
 
         try:
             where = self._build_where_clause(filter_dict)
-            # Query matching IDs first
+            # 先查询匹配的 ID
             results = self.collection.get(where=where, include=[])
             matching_ids = results.get("ids", [])
 
@@ -377,70 +377,70 @@ class ChromaStore(BaseVectorStore):
             ) from e
     
     def _sanitize_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        """Sanitize metadata to ensure ChromaDB compatibility.
-        
-        ChromaDB requires metadata values to be str, int, float, or bool.
-        This method converts or filters out incompatible types.
-        
-        Args:
-            metadata: Raw metadata dict.
-        
-        Returns:
-            Sanitized metadata dict.
+        """清洗元数据以确保 ChromaDB 兼容。
+
+        ChromaDB 要求元数据值为 str、int、float 或 bool。
+        此方法会转换或过滤掉不兼容的类型。
+
+        参数:
+            metadata: 原始元数据 dict。
+
+        返回:
+            清洗后的元数据 dict。
         """
         sanitized = {}
         for key, value in metadata.items():
             if isinstance(value, (str, int, float, bool)):
                 sanitized[key] = value
             elif value is None:
-                # Skip None values
+                # 跳过 None 值
                 continue
             elif isinstance(value, (list, tuple)):
-                # Convert to comma-separated string
+                # 转换为逗号分隔的字符串
                 sanitized[key] = ",".join(str(v) for v in value)
             else:
-                # Convert to string as fallback
+                # 回退为字符串
                 sanitized[key] = str(value)
-        
+
         return sanitized
-    
+
     def _build_where_clause(self, filters: Dict[str, Any]) -> Dict[str, Any]:
-        """Build ChromaDB where clause from filters.
-        
-        Converts standard filter dict to ChromaDB's query format.
-        
-        Args:
-            filters: Standard filter dict (e.g., {'source': 'doc1.pdf'}).
-        
-        Returns:
-            ChromaDB where clause dict.
-        
-        Note:
-            ChromaDB supports operators like $eq, $ne, $gt, $lt, $in, etc.
-            For simplicity, we currently support only exact equality matches.
-            Future enhancement: support complex filters.
+        """根据过滤条件构建 ChromaDB where 子句。
+
+        将标准过滤 dict 转换为 ChromaDB 的查询格式。
+
+        参数:
+            filters: 标准过滤 dict（如 {'source': 'doc1.pdf'}）。
+
+        返回:
+            ChromaDB where 子句 dict。
+
+        注意:
+            ChromaDB 支持 $eq、$ne、$gt、$lt、$in 等操作符。
+            为简化起见，目前仅支持精确相等匹配。
+            未来增强：支持复杂过滤条件。
         """
-        # Simple implementation: exact equality matches only
-        # For complex filters (e.g., {'score': {'$gt': 0.5}}), extend this method
+        # 简单实现：仅精确相等匹配
+        # 对于复杂过滤条件（如 {'score': {'$gt': 0.5}}），扩展此方法
         where = {}
         for key, value in filters.items():
             if isinstance(value, dict):
-                # Already in ChromaDB operator format (e.g., {'$eq': 'value'})
+                # 已是 ChromaDB 操作符格式（如 {'$eq': 'value'}）
                 where[key] = value
             else:
-                # Simple equality
+                # 简单相等
                 where[key] = value
-        
+
         return where
-    
+
     def get_collection_stats(self) -> Dict[str, Any]:
-        """Get statistics about the current collection.
-        
-        Returns:
-            Dict containing collection statistics:
-                - count: Number of records in collection
-                - name: Collection name
-                - metadata: Collection metadata
+        """获取当前 collection 的统计信息。
+
+        返回:
+            包含 collection 统计信息的 dict：
+                - count：collection 中的记录数量
+                - name：collection 名称
+                - metadata：collection 元数据
         """
         return {
             'count': self.collection.count(),
@@ -454,36 +454,36 @@ class ChromaStore(BaseVectorStore):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
-        """Retrieve records by their IDs from ChromaDB.
-        
-        This method is used by SparseRetriever to fetch text and metadata
-        for chunks that were matched by BM25 search.
-        
-        Args:
-            ids: List of record IDs to retrieve.
-            trace: Optional TraceContext for observability.
-            **kwargs: Provider-specific parameters (unused for Chroma).
-        
-        Returns:
-            List of records in the same order as input ids.
-            Each record contains:
-                - 'id': Record identifier
-                - 'text': The stored text content
-                - 'metadata': Associated metadata
-            If an ID is not found, an empty dict is returned for that position.
-        
-        Raises:
-            ValueError: If ids list is empty.
-            RuntimeError: If the retrieval operation fails.
+        """按 ID 从 ChromaDB 中检索记录。
+
+        此方法由 SparseRetriever 使用，用于获取 BM25 检索匹配到的 Chunk
+        的文本与元数据。
+
+        参数:
+            ids: 待检索的记录 ID 列表。
+            trace: 可选的 TraceContext，用于可观测性。
+            **kwargs: provider 特定参数（Chroma 中未使用）。
+
+        返回:
+            与输入 ids 顺序一致的记录列表。
+            每条记录包含：
+                - 'id'：记录标识符
+                - 'text'：存储的文本内容
+                - 'metadata'：关联的元数据
+            若某个 ID 未找到，则对应位置返回空 dict。
+
+        异常:
+            ValueError: 当 ids 列表为空时。
+            RuntimeError: 当检索操作失败时。
         """
         if not ids:
             raise ValueError("IDs list cannot be empty")
-        
-        # Ensure all IDs are strings
+
+        # 确保所有 ID 均为字符串
         str_ids = [str(id_) for id_ in ids]
-        
+
         try:
-            # ChromaDB's get method retrieves records by IDs
+            # ChromaDB 的 get 方法按 ID 检索记录
             results = self.collection.get(
                 ids=str_ids,
                 include=["metadatas", "documents"]
@@ -492,8 +492,8 @@ class ChromaStore(BaseVectorStore):
             raise RuntimeError(
                 f"Failed to get records by IDs from ChromaDB: {e}"
             ) from e
-        
-        # Build a mapping from ID to result for O(1) lookup
+
+        # 构建 ID 到结果的映射，以实现 O(1) 查找
         id_to_result: Dict[str, Dict[str, Any]] = {}
         
         if results and results.get('ids'):
@@ -508,13 +508,13 @@ class ChromaStore(BaseVectorStore):
                     'metadata': metadatas[i] if metadatas and metadatas[i] else {}
                 }
         
-        # Return results in the same order as input ids
+        # 按输入 ids 的顺序返回结果
         output = []
         for id_ in str_ids:
             if id_ in id_to_result:
                 output.append(id_to_result[id_])
             else:
-                # ID not found, return empty dict
+                # 未找到 ID，返回空 dict
                 output.append({})
         
         logger.debug(f"Retrieved {len([r for r in output if r])} of {len(ids)} records by IDs")

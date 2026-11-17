@@ -1,8 +1,7 @@
-"""Abstract base class for text splitters.
+"""文本切分器的抽象基类。
 
-This module defines the pluggable interface for text splitter providers,
-enabling seamless switching between different splitting strategies
-(Recursive, Semantic, FixedLength, etc.) through configuration-driven instantiation.
+本模块定义了文本切分器 provider 的可插拔接口，通过配置驱动的实例化方式，
+可在不同的切分策略（Recursive、Semantic、FixedLength 等）之间无缝切换。
 """
 
 from __future__ import annotations
@@ -12,16 +11,15 @@ from typing import Any, List, Optional
 
 
 class BaseSplitter(ABC):
-    """Abstract base class for text splitters.
-    
-    All splitter implementations must inherit from this class and implement
-    the split_text() method. This ensures a consistent interface across
-    different strategies.
-    
-    Design Principles Applied:
-    - Pluggable: Subclasses can be swapped without changing upstream code.
-    - Observable: Accepts optional TraceContext for observability integration.
-    - Config-Driven: Instances are created via factory based on settings.
+    """文本切分器的抽象基类。
+
+    所有切分器实现都必须继承此类并实现 split_text() 方法。
+    这可确保不同策略之间拥有一致的接口。
+
+    应用的设计原则：
+    - 可插拔：子类可在不修改上游代码的情况下替换。
+    - 可观测：接受可选的 TraceContext 以集成可观测性。
+    - 配置驱动：实例通过工厂基于配置创建。
     """
     
     @abstractmethod
@@ -31,30 +29,30 @@ class BaseSplitter(ABC):
         trace: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Split input text into a list of chunks.
-        
-        Args:
-            text: Input text to split. Must be a non-empty string.
-            trace: Optional TraceContext for observability (reserved for Stage F).
-            **kwargs: Strategy-specific parameters (chunk_size, overlap, etc.).
-        
-        Returns:
-            A list of text chunks. Order must preserve the original text sequence.
-        
-        Raises:
-            ValueError: If input text is invalid.
-            RuntimeError: If the splitter fails unexpectedly.
+        """将输入文本切分为 Chunk 列表。
+
+        参数:
+            text: 待切分的输入文本。必须为非空字符串。
+            trace: 可选的 TraceContext，用于可观测性（预留给阶段 F）。
+            **kwargs: 策略特定参数（chunk_size、overlap 等）。
+
+        返回:
+            文本 Chunk 列表。顺序必须与原始文本序列一致。
+
+        异常:
+            ValueError: 当输入文本无效时。
+            RuntimeError: 当切分器意外失败时。
         """
         pass
     
     def validate_text(self, text: str) -> None:
-        """Validate input text.
-        
-        Args:
-            text: Input text to validate.
-        
-        Raises:
-            ValueError: If text is not a non-empty string.
+        """校验输入文本。
+
+        参数:
+            text: 待校验的输入文本。
+
+        异常:
+            ValueError: 当 text 不是非空字符串时。
         """
         if not isinstance(text, str):
             raise ValueError(f"Input text must be a string, got {type(text).__name__}")
@@ -62,13 +60,13 @@ class BaseSplitter(ABC):
             raise ValueError("Input text cannot be empty or whitespace-only")
     
     def validate_chunks(self, chunks: List[str]) -> None:
-        """Validate output chunks.
-        
-        Args:
-            chunks: List of chunk strings to validate.
-        
-        Raises:
-            ValueError: If chunks are empty or contain invalid entries.
+        """校验输出的 Chunk。
+
+        参数:
+            chunks: 待校验的 Chunk 字符串列表。
+
+        异常:
+            ValueError: 当 Chunk 列表为空或包含无效项时。
         """
         if not isinstance(chunks, list):
             raise ValueError("Chunks must be a list of strings")

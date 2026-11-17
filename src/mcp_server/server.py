@@ -1,8 +1,8 @@
-"""MCP Server entry point using official MCP SDK.
+"""使用官方 MCP SDK 的 MCP 服务器入口。
 
-This module implements the MCP server using the official Python MCP SDK
-with stdio transport. It ensures stdout only contains protocol messages
-while all logs go to stderr.
+该模块使用官方 Python MCP SDK 实现 MCP 服务器，
+采用 stdio 传输。它确保 stdout 只包含协议消息，
+而所有日志都输出到 stderr。
 """
 
 from __future__ import annotations
@@ -23,10 +23,10 @@ SERVER_VERSION = "0.1.0"
 
 
 def _redirect_all_loggers_to_stderr() -> None:
-    """Redirect all root logger handlers to stderr.
+    """将所有根 logger 的 handler 重定向到 stderr。
 
-    MCP stdio transport reserves stdout for JSON-RPC messages.
-    Any logging to stdout corrupts the protocol stream.
+    MCP stdio 传输将 stdout 保留给 JSON-RPC 消息。
+    任何输出到 stdout 的日志都会破坏协议流。
     """
     import logging as _logging
 
@@ -35,7 +35,7 @@ def _redirect_all_loggers_to_stderr() -> None:
     stderr_handler.setFormatter(
         _logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
     )
-    # Replace any existing stream handlers that might point to stdout
+    # 替换任何可能指向 stdout 的现有 stream handler
     for handler in root.handlers[:]:
         if isinstance(handler, _logging.StreamHandler) and not isinstance(
             handler, _logging.FileHandler
@@ -45,27 +45,27 @@ def _redirect_all_loggers_to_stderr() -> None:
 
 
 def _preload_heavy_imports() -> None:
-    """Eagerly import heavy third-party modules in the **main thread**.
+    """在 **主线程** 中提前导入重量级第三方模块。
 
-    MCP SDK uses anyio + background threads for stdin/stdout I/O.
-    When a tool handler runs ``asyncio.to_thread(fn)``, *fn* executes in
-    a new worker thread.  If it tries to ``import chromadb`` (which
-    transitively pulls in onnxruntime, numpy, sqlite3 C extensions …),
-    that import can deadlock with the stdin-reader thread because both
-    compete for Python's global *import lock*.
+    MCP SDK 使用 anyio + 后台线程进行 stdin/stdout I/O。
+    当工具处理函数执行 ``asyncio.to_thread(fn)`` 时，*fn* 会在
+    新的工作线程中运行。如果它尝试 ``import chromadb``（会间接
+    引入 onnxruntime、numpy、sqlite3 C 扩展……），该导入可能与
+    stdin 读取线程发生死锁，因为二者都会争抢 Python 的全局
+    *import lock*。
 
-    Pre-importing here – before anyio spins up its I/O threads – avoids
-    the deadlock entirely: subsequent ``import`` statements in worker
-    threads simply hit ``sys.modules`` and return immediately.
+    在此处预先导入（早于 anyio 启动其 I/O 线程）即可完全避免
+    死锁：后续工作线程中的 ``import`` 语句只需命中 ``sys.modules``
+    并立即返回。
     """
-    # chromadb is the heaviest culprit (onnxruntime, numpy, …)
+    # chromadb 是最重的来源（onnxruntime、numpy……）
     try:
         import chromadb  # noqa: F401
         import chromadb.config  # noqa: F401
     except ImportError:
-        pass  # optional at install time
+        pass  # 安装时可选项
 
-    # Internal modules that tools lazy-import inside asyncio.to_thread
+    # 工具在 asyncio.to_thread 中延迟导入的内部模块
     try:
         import src.core.query_engine.query_processor  # noqa: F401
         import src.core.query_engine.hybrid_search  # noqa: F401
@@ -80,28 +80,28 @@ def _preload_heavy_imports() -> None:
 
 
 async def run_stdio_server_async() -> int:
-    """Run MCP server over stdio asynchronously.
+    """以异步方式通过 stdio 运行 MCP 服务器。
 
-    Returns:
-        Exit code.
+    返回:
+        退出码。
     """
-    # Import here to avoid import errors if mcp not installed
+    # 在此导入，避免 mcp 未安装时的导入错误
     import mcp.server.stdio
 
-    # Ensure ALL logging goes to stderr (stdout is reserved for JSON-RPC)
+    # 确保所有日志都输出到 stderr（stdout 保留给 JSON-RPC）
     _redirect_all_loggers_to_stderr()
 
-    # Pre-load heavy deps in main thread to prevent import-lock deadlocks
-    # when tool handlers later call asyncio.to_thread().
+    # 在主线程中预加载重量级依赖，防止之后工具处理函数调用
+    # asyncio.to_thread() 时发生 import 锁死锁。
     _preload_heavy_imports()
 
     logger = get_logger(log_level="INFO")
     logger.info("Starting MCP server (stdio transport) with official SDK.")
 
-    # Create server with protocol handler
+    # 创建带协议处理器的服务器
     server = create_mcp_server(SERVER_NAME, SERVER_VERSION)
 
-    # Run with stdio transport
+    # 以 stdio 传输运行
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,
@@ -114,16 +114,16 @@ async def run_stdio_server_async() -> int:
 
 
 def run_stdio_server() -> int:
-    """Run MCP server over stdio (synchronous wrapper).
+    """通过 stdio 运行 MCP 服务器（同步包装）。
 
-    Returns:
-        Exit code.
+    返回:
+        退出码。
     """
     return asyncio.run(run_stdio_server_async())
 
 
 def main() -> int:
-    """Entry point for stdio MCP server."""
+    """stdio MCP 服务器的入口点。"""
     return run_stdio_server()
 
 

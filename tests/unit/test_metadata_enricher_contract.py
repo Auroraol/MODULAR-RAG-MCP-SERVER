@@ -1,4 +1,4 @@
-"""Contract tests for MetadataEnricher transform."""
+"""MetadataEnricher transform 的契约测试。"""
 
 import pytest
 from unittest.mock import Mock, patch
@@ -12,12 +12,12 @@ from src.libs.llm.base_llm import Message
 
 
 # ============================================================================
-# Test Fixtures
+# 测试夹具
 # ============================================================================
 
 @pytest.fixture
 def mock_settings_llm_disabled():
-    """Settings with LLM disabled."""
+    """禁用 LLM 的配置。"""
     settings = Mock(spec=Settings)
     settings.ingestion = Mock()
     settings.ingestion.metadata_enricher = {'use_llm': False}
@@ -26,7 +26,7 @@ def mock_settings_llm_disabled():
 
 @pytest.fixture
 def mock_settings_llm_enabled():
-    """Settings with LLM enabled."""
+    """启用 LLM 的配置。"""
     settings = Mock(spec=Settings)
     settings.ingestion = Mock()
     settings.ingestion.metadata_enricher = {'use_llm': True}
@@ -37,7 +37,7 @@ def mock_settings_llm_enabled():
 
 @pytest.fixture
 def sample_chunk_simple():
-    """Simple text chunk."""
+    """简单文本 Chunk。"""
     return Chunk(
         id="chunk_001",
         text="This is a test document about Python programming. It covers basic concepts.",
@@ -48,7 +48,7 @@ def sample_chunk_simple():
 
 @pytest.fixture
 def sample_chunk_with_heading():
-    """Chunk with markdown heading."""
+    """包含 Markdown 标题的 Chunk。"""
     return Chunk(
         id="chunk_002",
         text="# Introduction to Machine Learning\n\nMachine learning is a subset of artificial intelligence. It enables systems to learn from data.",
@@ -59,7 +59,7 @@ def sample_chunk_with_heading():
 
 @pytest.fixture
 def sample_chunk_with_code():
-    """Chunk with code identifiers."""
+    """包含代码标识符的 Chunk。"""
     return Chunk(
         id="chunk_003",
         text="The getUserById function retrieves user data. It uses async_fetch and handles errors gracefully.",
@@ -70,7 +70,7 @@ def sample_chunk_with_code():
 
 @pytest.fixture
 def temp_prompt_file(tmp_path):
-    """Create temporary prompt file."""
+    """创建临时提示词文件。"""
     prompt_file = tmp_path / "test_prompt.txt"
     prompt_file.write_text(
         "Analyze this text:\n{chunk_text}\n\n"
@@ -80,14 +80,14 @@ def temp_prompt_file(tmp_path):
 
 
 # ============================================================================
-# Rule-Based Enrichment Tests
+# 基于规则的增强测试
 # ============================================================================
 
 class TestRuleBasedEnrichment:
-    """Test rule-based metadata extraction."""
-    
+    """基于规则的 metadata 提取测试。"""
+
     def test_extract_title_from_heading(self, mock_settings_llm_disabled, sample_chunk_with_heading):
-        """Should extract title from markdown heading."""
+        """应从 Markdown 标题提取标题。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         result = enricher.transform([sample_chunk_with_heading])
@@ -97,7 +97,7 @@ class TestRuleBasedEnrichment:
         assert result[0].metadata['enriched_by'] == "rule"
     
     def test_extract_title_from_first_line(self, mock_settings_llm_disabled):
-        """Should use first line as title if short and appropriate."""
+        """若首行较短且合适，应作为标题。"""
         chunk = Chunk(
             id="chunk_004",
             text="Quick Start Guide\n\nFollow these steps to get started.",
@@ -111,16 +111,16 @@ class TestRuleBasedEnrichment:
         assert result[0].metadata['title'] == "Quick Start Guide"
     
     def test_extract_title_from_sentence(self, mock_settings_llm_disabled, sample_chunk_simple):
-        """Should extract first sentence as title."""
+        """应提取首个句子作为标题。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         result = enricher.transform([sample_chunk_simple])
         
-        # Title should be first sentence without trailing period
+        # 标题应为首个句子且去除句末句号
         assert result[0].metadata['title'] == "This is a test document about Python programming"
     
     def test_extract_summary_from_text(self, mock_settings_llm_disabled, sample_chunk_with_heading):
-        """Should generate summary from first few sentences."""
+        """应从开头几个句子生成摘要。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         result = enricher.transform([sample_chunk_with_heading])
@@ -130,7 +130,7 @@ class TestRuleBasedEnrichment:
         assert "Machine learning" in result[0].metadata['summary']
     
     def test_extract_tags_from_capitalized_words(self, mock_settings_llm_disabled, sample_chunk_with_heading):
-        """Should extract capitalized words as tags."""
+        """应提取首字母大写的词作为标签。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         result = enricher.transform([sample_chunk_with_heading])
@@ -138,21 +138,21 @@ class TestRuleBasedEnrichment:
         assert 'tags' in result[0].metadata
         tags = result[0].metadata['tags']
         assert isinstance(tags, list)
-        # Should find "Machine" or "Learning" or "Introduction"
+        # 应找到 "Machine" 或 "Learning" 或 "Introduction"
         assert any(tag in ['Machine', 'Learning', 'Introduction'] for tag in tags)
     
     def test_extract_tags_from_code_identifiers(self, mock_settings_llm_disabled, sample_chunk_with_code):
-        """Should extract code identifiers as tags."""
+        """应提取代码标识符作为标签。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         result = enricher.transform([sample_chunk_with_code])
         
         tags = result[0].metadata['tags']
-        # Should find async_fetch
+        # 应找到 async_fetch
         assert 'async_fetch' in tags or 'getUserById' in tags
     
     def test_metadata_preserved(self, mock_settings_llm_disabled, sample_chunk_simple):
-        """Should preserve existing metadata."""
+        """应保留已有 metadata。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         result = enricher.transform([sample_chunk_simple])
@@ -163,7 +163,7 @@ class TestRuleBasedEnrichment:
         assert 'tags' in result[0].metadata
     
     def test_empty_text_handling(self, mock_settings_llm_disabled):
-        """Should handle empty text gracefully."""
+        """应优雅处理空文本。"""
         chunk = Chunk(
             id="chunk_empty",
             text="",
@@ -181,28 +181,28 @@ class TestRuleBasedEnrichment:
 
 
 # ============================================================================
-# Transform Pipeline Tests
+# Transform Pipeline 测试
 # ============================================================================
 
 class TestTransformPipeline:
-    """Test the complete transform pipeline."""
-    
+    """完整 transform pipeline 的测试。"""
+
     def test_transform_single_chunk(self, mock_settings_llm_disabled, sample_chunk_simple):
-        """Should enrich a single chunk."""
+        """应增强单个 Chunk。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         result = enricher.transform([sample_chunk_simple])
         
         assert len(result) == 1
         assert result[0].id == sample_chunk_simple.id
-        assert result[0].text == sample_chunk_simple.text  # Text unchanged
+        assert result[0].text == sample_chunk_simple.text  # 文本未变
         assert 'title' in result[0].metadata
         assert 'summary' in result[0].metadata
         assert 'tags' in result[0].metadata
         assert result[0].metadata['enriched_by'] == "rule"
     
     def test_transform_multiple_chunks(self, mock_settings_llm_disabled):
-        """Should enrich multiple chunks independently."""
+        """应独立增强多个 Chunk。"""
         chunks = [
             Chunk(id=f"chunk_{i}", text=f"Content {i}", metadata={"source_path": f"doc{i}.txt"}, source_ref=f"doc{i}.txt")
             for i in range(5)
@@ -219,7 +219,7 @@ class TestTransformPipeline:
             assert 'tags' in chunk.metadata
     
     def test_transform_empty_list(self, mock_settings_llm_disabled):
-        """Should handle empty chunk list."""
+        """应处理空 Chunk 列表。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         result = enricher.transform([])
@@ -227,13 +227,13 @@ class TestTransformPipeline:
         assert result == []
     
     def test_trace_recording(self, mock_settings_llm_disabled, sample_chunk_simple):
-        """Should record processing info in trace context."""
+        """应在 Trace 上下文中记录处理信息。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         trace = TraceContext(trace_id="test_trace")
         
         enricher.transform([sample_chunk_simple], trace=trace)
         
-        # Check trace was recorded
+        # 检查 Trace 已被记录
         assert len(trace.stages) > 0
         stage_data = trace.get_stage_data('metadata_enricher')
         assert stage_data is not None
@@ -242,14 +242,14 @@ class TestTransformPipeline:
 
 
 # ============================================================================
-# LLM Enhancement Tests
+# LLM 增强测试
 # ============================================================================
 
 class TestLLMEnhancement:
-    """Test LLM-based metadata enrichment."""
-    
+    """基于 LLM 的 metadata 增强测试。"""
+
     def test_llm_success_path(self, mock_settings_llm_enabled, sample_chunk_simple, temp_prompt_file):
-        """Should use LLM when enabled and successful."""
+        """启用且成功时应使用 LLM。"""
         mock_llm = Mock()
         mock_llm.chat.return_value = (
             "Title: Python Programming Guide\n"
@@ -273,7 +273,7 @@ class TestLLMEnhancement:
         mock_llm.chat.assert_called_once()
     
     def test_llm_fallback_on_failure(self, mock_settings_llm_enabled, sample_chunk_simple, temp_prompt_file):
-        """Should fallback to rule-based on LLM failure."""
+        """LLM 失败时应回退到基于规则的处理。"""
         mock_llm = Mock()
         mock_llm.chat.side_effect = Exception("API Error")
         
@@ -289,12 +289,12 @@ class TestLLMEnhancement:
         assert result[0].metadata['enriched_by'] == "rule"
         assert 'enrich_fallback_reason' in result[0].metadata
         assert result[0].metadata['enrich_fallback_reason'] == "llm_failed"
-        # Should still have valid metadata from rule-based
+        # 仍应有来自基于规则的有效 metadata
         assert result[0].metadata['title']
         assert result[0].metadata['summary']
     
     def test_llm_fallback_on_empty_response(self, mock_settings_llm_enabled, sample_chunk_simple, temp_prompt_file):
-        """Should fallback to rule-based when LLM returns empty response."""
+        """LLM 返回空响应时应回退到基于规则的处理。"""
         mock_llm = Mock()
         mock_llm.chat.return_value = ""
         
@@ -310,7 +310,7 @@ class TestLLMEnhancement:
         assert 'enrich_fallback_reason' in result[0].metadata
     
     def test_llm_trace_recording(self, mock_settings_llm_enabled, sample_chunk_simple, temp_prompt_file):
-        """Should record LLM calls in trace context."""
+        """应在 Trace 上下文中记录 LLM 调用。"""
         mock_llm = Mock()
         mock_llm.chat.return_value = (
             "Title: Test\nSummary: Test summary\nTags: test"
@@ -325,20 +325,20 @@ class TestLLMEnhancement:
         
         enricher.transform([sample_chunk_simple], trace=trace)
         
-        # Should have both llm_enrich and metadata_enricher stages
+        # 应同时具有 llm_enrich 和 metadata_enricher 阶段
         assert trace.get_stage_data('llm_enrich') is not None
         assert trace.get_stage_data('metadata_enricher') is not None
 
 
 # ============================================================================
-# Prompt Loading Tests
+# 提示词加载测试
 # ============================================================================
 
 class TestPromptLoading:
-    """Test prompt template loading."""
-    
+    """提示词模板加载的测试。"""
+
     def test_load_existing_prompt(self, mock_settings_llm_enabled, temp_prompt_file):
-        """Should load prompt from file."""
+        """应从文件加载提示词。"""
         enricher = MetadataEnricher(
             mock_settings_llm_enabled,
             prompt_path=temp_prompt_file
@@ -350,7 +350,7 @@ class TestPromptLoading:
         assert "{chunk_text}" in prompt
     
     def test_prompt_cached_after_first_load(self, mock_settings_llm_enabled, temp_prompt_file):
-        """Should cache prompt after first load."""
+        """首次加载后应缓存提示词。"""
         enricher = MetadataEnricher(
             mock_settings_llm_enabled,
             prompt_path=temp_prompt_file
@@ -359,10 +359,10 @@ class TestPromptLoading:
         prompt1 = enricher._load_prompt()
         prompt2 = enricher._load_prompt()
         
-        assert prompt1 is prompt2  # Same object (cached)
-    
+        assert prompt1 is prompt2  # 同一对象（已缓存）
+
     def test_missing_prompt_file(self, mock_settings_llm_enabled):
-        """Should raise FileNotFoundError for missing prompt."""
+        """提示词缺失时应抛出 FileNotFoundError。"""
         enricher = MetadataEnricher(
             mock_settings_llm_enabled,
             prompt_path="/nonexistent/prompt.txt"
@@ -373,44 +373,44 @@ class TestPromptLoading:
 
 
 # ============================================================================
-# Atomic Processing Tests
+# 原子处理测试
 # ============================================================================
 
 class TestAtomicProcessing:
-    """Test that failures in one chunk don't affect others."""
-    
+    """测试单个 Chunk 的失败不影响其他 Chunk。"""
+
     def test_exception_in_one_chunk_preserves_minimal_metadata(self, mock_settings_llm_disabled):
-        """Should provide minimal metadata for failed chunks."""
+        """应为失败的 Chunk 提供最小 metadata。"""
         chunks = [
             Chunk(id="chunk_good", text="Valid content", metadata={"source_path": "good.txt"}, source_ref="good.txt"),
-            Chunk(id="chunk_bad", text=None, metadata={"source_path": "bad.txt"}, source_ref="bad.txt"),  # Will cause error
+            Chunk(id="chunk_bad", text=None, metadata={"source_path": "bad.txt"}, source_ref="bad.txt"),  # 将导致错误
             Chunk(id="chunk_good2", text="More valid content", metadata={"source_path": "good2.txt"}, source_ref="good2.txt"),
         ]
-        
+
         enricher = MetadataEnricher(mock_settings_llm_disabled)
-        
-        # Should not raise exception
+
+        # 不应抛出异常
         result = enricher.transform(chunks)
-        
+
         assert len(result) == 3
-        # First and third should be enriched normally
+        # 第一个和第三个应正常增强
         assert result[0].metadata['enriched_by'] == "rule"
         assert result[2].metadata['enriched_by'] == "rule"
-        # Second should have error metadata
+        # 第二个应带有错误 metadata
         assert result[1].metadata['enriched_by'] == "error"
         assert 'enrich_error' in result[1].metadata
         assert result[1].metadata['title'] == 'Untitled'
 
 
 # ============================================================================
-# Configuration Tests
+# 配置测试
 # ============================================================================
 
 class TestConfiguration:
-    """Test configuration handling."""
-    
+    """配置处理的测试。"""
+
     def test_use_llm_disabled_by_default(self):
-        """Should default to rule-based when LLM not configured."""
+        """未配置 LLM 时应默认为基于规则。"""
         settings = Mock(spec=Settings)
         settings.ingestion = Mock()
         settings.ingestion.metadata_enricher = {}
@@ -420,45 +420,45 @@ class TestConfiguration:
         assert enricher.use_llm is False
     
     def test_lazy_llm_initialization(self, mock_settings_llm_enabled):
-        """Should initialize LLM lazily when first accessed."""
+        """应在首次访问时惰性初始化 LLM。"""
         with patch('src.ingestion.transform.metadata_enricher.LLMFactory.create') as mock_create:
             mock_llm = Mock()
             mock_create.return_value = mock_llm
             
             enricher = MetadataEnricher(mock_settings_llm_enabled)
             
-            # Should not create LLM yet
+            # 此时尚不应创建 LLM
             mock_create.assert_not_called()
-            
-            # Access llm property
+
+            # 访问 llm 属性
             _ = enricher.llm
-            
-            # Now should create
+
+            # 现在应已创建
             mock_create.assert_called_once()
-    
+
     def test_llm_init_failure_disables_llm(self, mock_settings_llm_enabled):
-        """Should disable LLM on initialization failure."""
+        """初始化失败时应禁用 LLM。"""
         with patch('src.ingestion.transform.metadata_enricher.LLMFactory.create') as mock_create:
             mock_create.side_effect = Exception("Init failed")
             
             enricher = MetadataEnricher(mock_settings_llm_enabled)
             
-            # Access llm property (will trigger init)
+            # 访问 llm 属性（将触发初始化）
             _ = enricher.llm
-            
-            # Should disable LLM after failure
+
+            # 失败后应禁用 LLM
             assert enricher.use_llm is False
 
 
 # ============================================================================
-# Response Parsing Tests
+# 响应解析测试
 # ============================================================================
 
 class TestResponseParsing:
-    """Test LLM response parsing."""
-    
+    """LLM 响应解析的测试。"""
+
     def test_parse_well_formatted_response(self, mock_settings_llm_disabled):
-        """Should parse properly formatted LLM response."""
+        """应解析格式规范的 LLM 响应。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         response = (
@@ -475,7 +475,7 @@ class TestResponseParsing:
         assert len(metadata['tags']) == 4
     
     def test_parse_missing_fields(self, mock_settings_llm_disabled):
-        """Should handle missing fields gracefully."""
+        """应优雅处理缺失字段。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         response = "Title: Just a Title"
@@ -483,17 +483,17 @@ class TestResponseParsing:
         metadata = enricher._parse_llm_response(response)
         
         assert metadata['title'] == "Just a Title"
-        assert metadata['summary']  # Should have fallback
+        assert metadata['summary']  # 应有回退值
         assert isinstance(metadata['tags'], list)
     
     def test_parse_malformed_response(self, mock_settings_llm_disabled):
-        """Should handle malformed response."""
+        """应处理格式错误的响应。"""
         enricher = MetadataEnricher(mock_settings_llm_disabled)
         
         response = "This is not formatted correctly at all"
         
         metadata = enricher._parse_llm_response(response)
         
-        assert metadata['title'] == "Untitled"  # Fallback
-        assert metadata['summary']  # Should use raw response as summary
+        assert metadata['title'] == "Untitled"  # 回退值
+        assert metadata['summary']  # 应使用原始响应作为摘要
         assert isinstance(metadata['tags'], list)
