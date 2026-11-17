@@ -145,10 +145,12 @@ except ImportError:
 
 ## 步骤 6：安装 SDK（如有）
 
-大多数 OpenAI 兼容 provider 只需 `pip install openai`（已安装）。
+大多数 OpenAI 兼容 provider 只需 `uv add openai`（已在 `pyproject.toml` 的 dev 依赖中）。
 如果不兼容 OpenAI，则需要 provider 专用 SDK：
-- Qwen：`pip install dashscope`（备选，但推荐使用 OpenAI 兼容模式）
-- Gemini：`pip install google-generativeai`（仅在未使用 OpenAI 兼容模式时需要）
+- Qwen：`uv add dashscope`（备选，但推荐使用 OpenAI 兼容模式）
+- Gemini：`uv add google-generativeai`（仅在未使用 OpenAI 兼容模式时需要）
+
+> 若只需临时装入当前 `.venv` 而不写回 `pyproject.toml`，用 `uv pip install <sdk>`。
 
 ## Provider 专用参考
 
@@ -165,7 +167,7 @@ except ImportError:
 完成脚手架后，运行快速验证：
 
 ```python
-python -c "
+uv run python -c "
 from src.libs.llm import LLMFactory
 from src.libs.embedding import EmbeddingFactory
 print('LLM providers:', LLMFactory.list_providers())

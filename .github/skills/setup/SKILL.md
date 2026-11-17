@@ -23,41 +23,73 @@ Preflight → Ask User → Generate Config → Install Deps → Validate → Lau
 
 在向用户提出任何问题之前，先验证前置条件：
 
-### 1.1 检查 Python 版本
+### 1.1 检查 uv 与 Python 版本
+
+本项目使用 **uv** 作为包与虚拟环境管理器（不直接使用 pip）。
 
 ```powershell
-python --version          # Require >=3.10
+uv --version              # 需要 uv >= 0.5
+uv python list --only-installed   # 查看 uv 可用的 Python
 ```
 
-如果 Python < 3.10，停止并告知用户安装受支持的版本。
+如果 uv 未安装，先引导用户安装：
+
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+安装后需重开终端（或 `source $HOME/.local/bin/env`）。若 `uv python list` 中没有任何 >= 3.10 的解释器，提示用户先执行 `uv python install 3.12`。
 
 ### 1.2 检查并创建虚拟环境
 
-检查 `.venv` 目录是否已存在。若已存在，跳过创建，直接激活即可。若不存在，则创建并激活它。
+检查 `.venv` 目录是否已存在。若已存在，跳过创建，直接验证即可。若不存在，则用 uv 创建。
 
-**重要：** 使用 `--without-pip` 避开在 Windows 上可能卡住的缓慢 `ensurepip` 步骤，然后在激活后使用 `ensurepip` 手动引导 pip。
+**重要：** 使用 `uv venv` 而不是 `python -m venv --without-pip` + `ensurepip` —— uv 自带 pip 兼容层，无需 bootstrap，在 Windows 上也不会卡住。
 
 ```powershell
-# Step 1: Check if .venv exists
+# Step 1: 检查 .venv 是否存在
 Test-Path ".venv"
 
-# Step 2: If .venv does NOT exist, create it (fast, no pip bundling)
-python -m venv .venv --without-pip
+# Step 2: 若不存在，用 uv 创建（默认取最新可用 Python）
+uv venv .venv
+# 需要固定版本时：
+# uv venv .venv --python 3.12
 
-# Step 3: Activate the virtual environment
+# Step 3: 激活虚拟环境（可选 —— 后续统一用 `uv run` / `uv pip` 免激活）
 # Windows:
 .\.venv\Scripts\Activate.ps1
 # macOS/Linux:
 # source .venv/bin/activate
 
-# Step 4: Bootstrap pip inside the venv (only needed after --without-pip)
-python -m ensurepip --upgrade
-
-# Step 5: Verify
-pip --version             # Should show pip path inside .venv
+# Step 4: 验证 uv 能识别到该环境
+uv pip list --python ".venv/Scripts/python.exe"    # 应为空（全新 venv）
 ```
 
-如果 `.venv` 已存在，只需运行步骤 3（激活）和步骤 5（验证）。
+如果 `.venv` 已存在，只需运行步骤 4（验证）。
+
+> 💡 **uv 的工作方式**：在项目根目录执行 `uv pip install` / `uv run` 时，uv 会自动发现同级的 `.venv`，无需激活。下面所有命令都按这一约定编写。
+
+> ⚠️ **已知坑：`VIRTUAL_ENV` 环境变量优先级最高**
+> 如果当前终端里已存在 `VIRTUAL_ENV`（例如从 PyCharm 启动、或激活了别的项目的 venv），`uv pip` 会**忽略本地 `.venv` 而指向那个环境**，导致依赖装错地方。
+> 预检时必须验证：
+>
+> ```powershell
+> echo $env:VIRTUAL_ENV      # PowerShell；bash 用 echo $VIRTUAL_ENV
+> ```
+>
+> 若它指向**本项目之外**的路径，先清空再继续：
+>
+> ```powershell
+> # PowerShell
+> Remove-Item Env:VIRTUAL_ENV
+> # bash
+> unset VIRTUAL_ENV
+> ```
+>
+> 或者全程显式传 `--python`：`uv pip install -e ".[dev]" --python ".venv/Scripts/python.exe"`。
 
 ---
 
@@ -166,7 +198,7 @@ Vision LLM 有**自己独立的配置段**（`vision_llm`），包含单独的 `
 3. 在 `src/libs/llm/{name}_vision_llm.py` 中创建 Vision LLM 类（继承 `BaseVisionLLM`）— 如需要
 4. 在 `src/libs/llm/__init__.py` 和 `src/libs/embedding/__init__.py` 中注册
 5. 如果 provider 使用自定义 endpoint，向 `LLMSettings` / `EmbeddingSettings` 添加 `base_url` 字段
-6. 如需要，安装 provider SDK：`pip install <sdk>`
+6. 如需要，安装 provider SDK：`uv add <sdk>`（若 `pyproject.toml` 已包含该依赖则用 `uv sync`）
 7. 将 provider profile 添加到 `references/provider_profiles.md`
 
 许多 provider（Qwen、Gemini、Groq、Mistral 等）都兼容 OpenAI — 只需继承 `OpenAILLM` / `OpenAIEmbedding`，并覆盖 `DEFAULT_BASE_URL` + 认证逻辑。
@@ -189,28 +221,49 @@ Vision LLM 有**自己独立的配置段**（`vision_llm`），包含单独的 `
 同时确保所需目录存在：
 
 ```powershell
-python -c "from pathlib import Path; [Path(d).mkdir(parents=True, exist_ok=True) for d in ['data/db/chroma', 'data/images/default', 'logs', 'config/prompts']]"
+uv run python -c "from pathlib import Path; [Path(d).mkdir(parents=True, exist_ok=True) for d in ['data/db/chroma', 'data/images/default', 'logs', 'config/prompts']]"
 ```
 
 ---
 
 ## 步骤 4：安装依赖
 
+**推荐方式（可复现）：** 若已提交 `uv.lock`，直接同步：
+
 ```powershell
-pip install -e ".[dev]"
+uv sync --extra dev
 ```
 
-如果特定 provider 需要额外软件包：
-- **Cross-Encoder rerank**：`pip install sentence-transformers`
-- **Streamlit dashboard**：`pip install streamlit`
-- **OpenAI**：`pip install openai`
+**首次 / 无 lock 文件时：** 以可编辑模式安装项目及 dev 依赖：
+
+```powershell
+uv pip install -e ".[dev]"
+```
+
+> ⚠️ 若 `uv pip list` 显示出的是别的项目的包（见 1.2 的 `VIRTUAL_ENV` 坑），加上 `--python ".venv/Scripts/python.exe"` 强制指定目标环境。
+
+> 说明：`uv pip install` 是 pip 的兼容子命令，行为与 `pip install` 一致但快得多；`uv add` 则会同时写入 `pyproject.toml` 并更新 `uv.lock`。修改依赖定义时优先用 `uv add`。
+
+如果特定 provider 需要额外软件包，**添加到项目依赖**（推荐，会写回 `pyproject.toml`）：
+
+```powershell
+uv add sentence-transformers     # Cross-Encoder rerank
+uv add streamlit                 # Streamlit dashboard
+uv add openai                    # OpenAI SDK
+```
+
+若只需临时装入当前环境（不写回 `pyproject.toml`）：
+
+```powershell
+uv pip install sentence-transformers streamlit openai
+```
 
 验证关键导入：
 
 ```powershell
-python -c "import chromadb; import mcp; import yaml; print('Core deps OK')"
-python -c "import streamlit; print('Streamlit OK')"
-python -c "import openai; print('OpenAI SDK OK')"
+uv run python -c "import chromadb; import mcp; import yaml; print('Core deps OK')"
+uv run python -c "import streamlit; print('Streamlit OK')"
+uv run python -c "import openai; print('OpenAI SDK OK')"
 ```
 
 ---
@@ -220,7 +273,7 @@ python -c "import openai; print('OpenAI SDK OK')"
 测试配置能否正确加载：
 
 ```powershell
-python -c "from src.core.settings import load_settings; s = load_settings(); print(f'Config OK: LLM={s.llm.provider}/{s.llm.model}, Embed={s.embedding.provider}/{s.embedding.model}')"
+uv run python -c "from src.core.settings import load_settings; s = load_settings(); print(f'Config OK: LLM={s.llm.provider}/{s.llm.model}, Embed={s.embedding.provider}/{s.embedding.model}')"
 ```
 
 如果失败，进入**自动修复循环**：
@@ -239,9 +292,10 @@ Round 0..2:
 
 常见修复：
 - `SettingsError: Missing required field` → 将该字段添加到 settings.yaml
-- `ModuleNotFoundError` → `pip install <package>`
+- `ModuleNotFoundError` → `uv add <package>`（或 `uv sync` 拉齐依赖）
 - `Connection refused`（Ollama）→ 告知用户启动 Ollama 服务
 - `dimensions` 值错误 → 从 provider_profiles.md 查找正确值
+- `No solution found` / 版本冲突 → 放宽 `pyproject.toml` 中的版本约束后重新 `uv sync`
 
 如果 3 轮均失败，向用户报告问题并附上诊断，请求协助。
 
@@ -250,13 +304,13 @@ Round 0..2:
 ## 步骤 6：启动 Dashboard
 
 ```powershell
-python scripts/start_dashboard.py --port 8501
+uv run python scripts/start_dashboard.py --port 8501
 ```
 
 以**后台进程**运行。等待几秒，然后验证其可访问：
 
 ```powershell
-python -c "
+uv run python -c "
 import urllib.request
 try:
     r = urllib.request.urlopen('http://localhost:8501/_stcore/health')
@@ -283,10 +337,10 @@ except Exception as e:
 Dashboard: http://localhost:8501
 
 Quick Start:
-  1. Ingest documents:  python scripts/ingest.py <path-to-pdf-or-folder>
-  2. Query:             python scripts/query.py "your question here"
-  3. Dashboard:         python scripts/start_dashboard.py
-  4. MCP Server:        python main.py
+  1. Ingest documents:  uv run python scripts/ingest.py <path-to-pdf-or-folder>
+  2. Query:             uv run python scripts/query.py "your question here"
+  3. Dashboard:         uv run python scripts/start_dashboard.py
+  4. MCP Server:        uv run python main.py
 
 Configuration: config/settings.yaml
 Logs:          logs/traces.jsonl

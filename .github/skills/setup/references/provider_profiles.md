@@ -108,7 +108,7 @@ embedding:
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
 ```
 Vision 模型：`qwen-vl-max`
-SDK：`pip install openai`（使用 OpenAI 兼容协议）
+SDK：`uv add openai`（使用 OpenAI 兼容协议）
 
 ### Gemini（Google AI Studio）
 ```yaml
@@ -130,7 +130,7 @@ embedding:
   base_url: "https://generativelanguage.googleapis.com/v1beta/openai/"
 ```
 Vision 模型：`gemini-2.0-flash`
-SDK：`pip install openai`（使用 OpenAI 兼容协议）
+SDK：`uv add openai`（使用 OpenAI 兼容协议）
 
 ## 模型 → 维度对照
 
