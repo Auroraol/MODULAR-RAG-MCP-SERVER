@@ -49,8 +49,8 @@ class DeepSeekLLM(BaseLLM):
 
         参数:
             settings: 包含 LLM 配置的应用设置。
-            api_key: 可选的 API key 覆盖值（回退到环境变量 DEEPSEEK_API_KEY）。
-            base_url: 可选的基础 URL 覆盖值。
+            api_key: 可选的 API key 覆盖值（回退到 settings.yaml 的 llm.api_key，再回退到环境变量 DEEPSEEK_API_KEY）。
+            base_url: 可选的基础 URL 覆盖值（回退到 settings.yaml 的 llm.base_url，再回退到默认值）。
             **kwargs: 额外的配置覆盖项。
 
         异常:
@@ -59,17 +59,25 @@ class DeepSeekLLM(BaseLLM):
         self.model = settings.llm.model
         self.default_temperature = settings.llm.temperature
         self.default_max_tokens = settings.llm.max_tokens
-        
-        # API key：显式传入 > 环境变量
-        self.api_key = api_key or os.environ.get("DEEPSEEK_API_KEY")
+
+        # API key：显式传入 > settings.yaml > 环境变量
+        self.api_key = (
+            api_key
+            or getattr(settings.llm, "api_key", None)
+            or os.environ.get("DEEPSEEK_API_KEY")
+        )
         if not self.api_key:
             raise ValueError(
-                "DeepSeek API key not provided. Set DEEPSEEK_API_KEY environment variable "
-                "or pass api_key parameter."
+                "DeepSeek API key not provided. Set in settings.yaml (llm.api_key), "
+                "DEEPSEEK_API_KEY environment variable, or pass api_key parameter."
             )
-        
-        # 基础 URL：显式传入 > 默认值
-        self.base_url = base_url or self.DEFAULT_BASE_URL
+
+        # 基础 URL：显式传入 > settings.yaml > 默认值
+        self.base_url = (
+            base_url
+            or getattr(settings.llm, "base_url", None)
+            or self.DEFAULT_BASE_URL
+        )
         
         # 保存额外的 kwargs 以备后用
         self._extra_config = kwargs

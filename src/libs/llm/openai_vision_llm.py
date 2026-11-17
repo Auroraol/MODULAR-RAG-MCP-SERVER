@@ -132,7 +132,11 @@ class OpenAIVisionLLM(BaseVisionLLM):
             if not self.api_version:
                 self.api_version = "2024-02-15-preview"
         else:
-            self.base_url = self.DEFAULT_BASE_URL
+            # 支持自定义网关 / 第三方中转站（如 new-api）
+            settings_base_url = (
+                getattr(vision_settings, 'base_url', None) if vision_settings else None
+            )
+            self.base_url = settings_base_url or self.DEFAULT_BASE_URL
         
         self._extra_config = kwargs
     

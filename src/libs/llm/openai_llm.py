@@ -50,7 +50,7 @@ class OpenAILLM(BaseLLM):
         参数:
             settings: 包含 LLM 配置的应用设置。
             api_key: 可选的 API key 覆盖值（回退到 settings.llm.api_key 或环境变量）。
-            base_url: 可选的基础 URL 覆盖值。
+            base_url: 可选的基础 URL 覆盖值（回退到 settings.yaml 的 llm.base_url，再回退到默认值）。
             **kwargs: 额外的配置覆盖项。
 
         异常:
@@ -91,7 +91,9 @@ class OpenAILLM(BaseLLM):
             if not self.api_version:
                 self.api_version = "2024-02-15-preview"
         else:
-            self.base_url = self.DEFAULT_BASE_URL
+            # 支持自定义网关 / 第三方中转站（如 new-api）
+            settings_base_url = getattr(settings.llm, 'base_url', None)
+            self.base_url = settings_base_url or self.DEFAULT_BASE_URL
             self._use_azure_auth = False
         
         # 保存额外的 kwargs 以备后用
