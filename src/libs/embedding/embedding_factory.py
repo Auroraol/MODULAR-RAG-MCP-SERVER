@@ -2,6 +2,8 @@
 
 本模块实现工厂模式，根据配置实例化相应的 Embedding Provider，
 从而无需修改代码即可通过配置驱动选择不同后端。
+
+工厂注册
 """
 
 from __future__ import annotations

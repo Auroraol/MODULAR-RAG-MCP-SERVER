@@ -8,6 +8,8 @@
     Cormack, G. V., Clarke, C. L., & Buettcher, S. (2009).
     "Reciprocal rank fusion outperforms condorcet and individual rank learning methods."
     SIGIR '09.
+
+RRF 倒数排名融合
 """
 
 from __future__ import annotations

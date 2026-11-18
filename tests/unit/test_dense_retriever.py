@@ -5,10 +5,10 @@ DenseRetriever 组件，确保其行为正确。
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from typing import Any, Dict, List
 
-from src.core.query_engine.dense_retriever import DenseRetriever, create_dense_retriever
+from src.core.query_engine.retriever.dense_retriever import DenseRetriever, create_dense_retriever
 from src.core.types import RetrievalResult
 
 

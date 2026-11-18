@@ -2,6 +2,8 @@
 
 本模块定义 Embedding 服务提供方的可插拔接口，
 通过配置驱动的实例化，实现不同后端（OpenAI、Local/BGE 等）之间的无缝切换。
+
+抽象接口
 """
 
 from __future__ import annotations

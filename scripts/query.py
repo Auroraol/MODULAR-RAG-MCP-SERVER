@@ -42,8 +42,8 @@ sys.path.insert(0, str(project_root))
 from src.core.settings import load_settings
 from src.core.query_engine.query_processor import QueryProcessor
 from src.core.query_engine.hybrid_search import create_hybrid_search
-from src.core.query_engine.dense_retriever import create_dense_retriever
-from src.core.query_engine.sparse_retriever import create_sparse_retriever
+from src.core.query_engine.retriever.dense_retriever import create_dense_retriever
+from src.core.query_engine.retriever.sparse_retriever import create_sparse_retriever
 from src.core.query_engine.reranker import create_core_reranker
 from src.core.trace import TraceContext, TraceCollector
 from src.ingestion.storage.bm25_indexer import BM25Indexer

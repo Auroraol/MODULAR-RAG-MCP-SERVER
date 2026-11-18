@@ -216,6 +216,7 @@ class IngestionPipeline:
         stages: Dict[str, Any] = {}
         _total_stages = 6
 
+        # 内部闭包封装
         def _notify(stage_name: str, step: int) -> None:
             if on_progress is not None:
                 on_progress(stage_name, step, _total_stages)

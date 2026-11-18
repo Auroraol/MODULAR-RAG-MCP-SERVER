@@ -17,11 +17,11 @@ from src.core.query_engine.query_processor import (
     CHINESE_STOPWORDS,
     ENGLISH_STOPWORDS,
 )
-from src.core.query_engine.dense_retriever import (
+from src.core.query_engine.retriever.dense_retriever import (
     DenseRetriever,
     create_dense_retriever,
 )
-from src.core.query_engine.sparse_retriever import (
+from src.core.query_engine.retriever.sparse_retriever import (
     SparseRetriever,
     create_sparse_retriever,
 )

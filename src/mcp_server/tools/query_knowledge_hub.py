@@ -163,8 +163,8 @@ class QueryKnowledgeHubTool:
         # 在此导入以避免循环导入并支持延迟加载
         from src.core.query_engine.query_processor import QueryProcessor
         from src.core.query_engine.hybrid_search import create_hybrid_search
-        from src.core.query_engine.dense_retriever import create_dense_retriever
-        from src.core.query_engine.sparse_retriever import create_sparse_retriever
+        from src.core.query_engine.retriever.dense_retriever import create_dense_retriever
+        from src.core.query_engine.retriever.sparse_retriever import create_sparse_retriever
         from src.core.query_engine.reranker import create_core_reranker
         from src.ingestion.storage.bm25_indexer import BM25Indexer
         from src.libs.embedding.embedding_factory import EmbeddingFactory

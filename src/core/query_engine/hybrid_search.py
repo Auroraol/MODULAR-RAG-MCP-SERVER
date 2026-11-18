@@ -17,17 +17,17 @@ from __future__ import annotations
 
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from src.core.types import ProcessedQuery, RetrievalResult
 
 if TYPE_CHECKING:
-    from src.core.query_engine.dense_retriever import DenseRetriever
+    from src.core.query_engine.retriever.dense_retriever import DenseRetriever
     from src.core.query_engine.fusion import RRFFusion
     from src.core.query_engine.query_processor import QueryProcessor
-    from src.core.query_engine.sparse_retriever import SparseRetriever
+    from src.core.query_engine.retriever.sparse_retriever import SparseRetriever
     from src.core.settings import Settings
 
 logger = logging.getLogger(__name__)

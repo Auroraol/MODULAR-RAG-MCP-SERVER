@@ -8,8 +8,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from mcp import types
 from mcp.server.lowlevel import Server
@@ -34,7 +35,7 @@ class ToolDefinition:
 
     name: str
     description: str
-    input_schema: Dict[str, Any]
+    input_schema: dict[str, Any]
     handler: Callable[..., Any]
 
 
@@ -55,7 +56,7 @@ class ProtocolHandler:
 
     server_name: str
     server_version: str
-    tools: Dict[str, ToolDefinition] = field(default_factory=dict)
+    tools: dict[str, ToolDefinition] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """在 dataclass 初始化完成后初始化 logger。"""
@@ -65,7 +66,7 @@ class ProtocolHandler:
         self,
         name: str,
         description: str,
-        input_schema: Dict[str, Any],
+        input_schema: dict[str, Any],
         handler: Callable[..., Any],
     ) -> None:
         """向协议处理器注册工具。
@@ -90,7 +91,7 @@ class ProtocolHandler:
         )
         self._logger.info("Registered tool: %s", name)
 
-    def get_tool_schemas(self) -> List[types.Tool]:
+    def get_tool_schemas(self) -> list[types.Tool]:
         """获取用于 tools/list 响应的工具 schema 列表。
 
         返回:
@@ -106,7 +107,7 @@ class ProtocolHandler:
         ]
 
     async def execute_tool(
-        self, name: str, arguments: Dict[str, Any]
+        self, name: str, arguments: dict[str, Any]
     ) -> types.CallToolResult:
         """按名称执行已注册的工具。
 
@@ -165,7 +166,7 @@ class ProtocolHandler:
                 ],
                 isError=True,
             )
-        except Exception as e:
+        except Exception:
             # 内部错误 - 不要泄露堆栈信息
             self._logger.exception("Internal error executing tool %s", name)
             return types.CallToolResult(
@@ -178,7 +179,7 @@ class ProtocolHandler:
                 isError=True,
             )
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """获取用于 initialize 响应的服务器能力。
 
         返回:
@@ -211,13 +212,20 @@ def _register_default_tools(protocol_handler: ProtocolHandler) -> None:
 def create_mcp_server(
     server_name: str,
     server_version: str,
-    protocol_handler: Optional[ProtocolHandler] = None,
+    protocol_handler: ProtocolHandler | None = None,
     register_tools: bool = True,
 ) -> Server:
     """创建并配置带协议处理器的 MCP 服务器。
 
     该工厂函数创建一个底层 MCP Server 实例，并注册
     tools/list 与 tools/call 所需的处理函数。
+
+    兼容性说明:
+        MCP SDK 2.x 移除了 ``@server.list_tools()`` / ``@server.call_tool()``
+        装饰器，改为通过构造参数 ``on_list_tools`` / ``on_call_tool``
+        传入处理器。处理器签名也从 ``()`` / ``(name, arguments)`` 变为
+        ``(ctx, params)``，返回值需为 ``types.ListToolsResult`` /
+        ``types.CallToolResult``。本实现按 2.x 编写（``mcp>=2,<3``）。
 
     参数:
         server_name: 服务器名称。
@@ -239,22 +247,29 @@ def create_mcp_server(
     if register_tools:
         _register_default_tools(protocol_handler)
 
-    # 创建底层服务器
-    server = Server(server_name)
-
-    # 注册 tools/list 处理函数
-    @server.list_tools()
-    async def handle_list_tools() -> List[types.Tool]:
+    # tools/list 处理函数（MCP 2.x 签名：(ctx, params) -> ListToolsResult）
+    async def handle_list_tools(
+        ctx: Any, params: types.PaginatedRequestParams | None = None
+    ) -> types.ListToolsResult:
         """处理 tools/list 请求。"""
-        return protocol_handler.get_tool_schemas()
+        return types.ListToolsResult(tools=protocol_handler.get_tool_schemas())
 
-    # 注册 tools/call 处理函数
-    @server.call_tool()
+    # tools/call 处理函数（MCP 2.x 签名：(ctx, params) -> CallToolResult）
     async def handle_call_tool(
-        name: str, arguments: Dict[str, Any]
+        ctx: Any, params: types.CallToolRequestParams
     ) -> types.CallToolResult:
         """处理 tools/call 请求。"""
-        return await protocol_handler.execute_tool(name, arguments)
+        return await protocol_handler.execute_tool(
+            params.name, params.arguments or {}
+        )
+
+    # 创建底层服务器并绑定处理器
+    server = Server(
+        server_name,
+        version=server_version,
+        on_list_tools=handle_list_tools,
+        on_call_tool=handle_call_tool,
+    )
 
     # 将协议处理器挂载到服务器上以便访问
     server._protocol_handler = protocol_handler  # type: ignore[attr-defined]

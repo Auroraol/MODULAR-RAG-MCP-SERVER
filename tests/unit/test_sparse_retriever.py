@@ -11,9 +11,9 @@
 
 import pytest
 from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from src.core.query_engine.sparse_retriever import SparseRetriever, create_sparse_retriever
+from src.core.query_engine.retriever.sparse_retriever import SparseRetriever, create_sparse_retriever
 from src.core.types import RetrievalResult
 
 
