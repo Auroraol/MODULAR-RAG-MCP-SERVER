@@ -12,11 +12,9 @@ BM25 索引所需的词项统计。
 
 from typing import List, Dict, Optional, Any
 from collections import Counter
-import re
-
-import jieba
 
 from src.core.types import Chunk
+from src.core.text_utils import tokenize as shared_tokenize
 
 
 class SparseEncoder:
@@ -134,9 +132,8 @@ class SparseEncoder:
     def _tokenize(self, text: str) -> List[str]:
         """将文本分词为词项。
 
-        使用 jieba 进行中文分词，使用正则处理英文。
-        这确保与查询侧（QueryProcessor）的分词方式一致，
-        而这是 BM25 匹配所必需的。
+        复用 ``src.core.text_utils.tokenize``，确保与查询侧
+        （QueryProcessor）的分词方式完全一致 —— 这是 BM25 匹配的必要条件。
 
         参数:
             text: 待分词的输入文本
@@ -144,20 +141,7 @@ class SparseEncoder:
         返回:
             有效词项列表
         """
-        tokens: List[str] = []
-
-        # 使用 jieba 对文本分词（同时处理中英文）
-        raw_tokens = jieba.lcut(text)
-
-        # 清洗词项：仅保留字母数字和中文字符
-        for token in raw_tokens:
-            token = token.strip()
-            if not token:
-                continue
-            # 跳过纯标点 / 空白
-            if re.fullmatch(r'[\s\W]+', token, re.UNICODE):
-                continue
-            tokens.append(token)
+        tokens = shared_tokenize(text)
 
         # 若配置开启则应用小写化
         if self.lowercase:
@@ -165,7 +149,7 @@ class SparseEncoder:
 
         # 按最小长度过滤
         terms = [t for t in tokens if len(t) >= self.min_term_length]
-        
+
         return terms
     
     def get_corpus_stats(

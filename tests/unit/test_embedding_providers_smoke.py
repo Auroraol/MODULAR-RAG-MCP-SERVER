@@ -23,27 +23,41 @@ from src.libs.embedding.openai_embedding import OpenAIEmbedding, OpenAIEmbedding
 
 @pytest.fixture
 def mock_settings_openai() -> Any:
-    """为 OpenAI embedding 创建 mock 配置。"""
+    """为 OpenAI embedding 创建 mock 配置。
+
+    注意：``Mock()`` 会为任何未显式设置的属性生成一个 truthy 的子 Mock，
+    因此这里必须把可选字段显式置为 None，否则会误触发
+    "settings 中存在 api_key / azure_endpoint" 的分支。
+    """
     settings = Mock()
     settings.embedding = Mock()
     settings.embedding.provider = "openai"
     settings.embedding.model = "text-embedding-3-small"
     settings.embedding.dimensions = 1536
     settings.embedding.base_url = None  # 默认配置中无 base_url
+    settings.embedding.api_key = None
+    settings.embedding.api_version = None
+    settings.embedding.azure_endpoint = None
+    settings.embedding.deployment_name = None
     return settings
 
 
 @pytest.fixture
 def mock_settings_azure() -> Any:
-    """为 Azure embedding 创建 mock 配置。"""
+    """为 Azure embedding 创建 mock 配置。
+
+    ``api_key`` / ``azure_endpoint`` / ``api_version`` 置为 None，
+    以便测试显式验证参数与环境变量回退逻辑。
+    """
     settings = Mock()
     settings.embedding = Mock()
     settings.embedding.provider = "azure"
     settings.embedding.model = "text-embedding-ada-002"
     settings.embedding.deployment_name = "my-embedding-deployment"
-    settings.embedding.azure_endpoint = "https://my-resource.openai.azure.com/"
-    settings.embedding.api_version = "2024-02-01"
+    settings.embedding.azure_endpoint = None
+    settings.embedding.api_version = None
     settings.embedding.dimensions = None
+    settings.embedding.api_key = None
     return settings
 
 
@@ -399,6 +413,7 @@ class TestEmbeddingFactoryRegistration:
     ) -> None:
         """测试工厂创建 Azure embedding 实例。"""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com/")
         
         EmbeddingFactory.register_provider("azure", AzureEmbedding)
         

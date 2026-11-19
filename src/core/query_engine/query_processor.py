@@ -19,8 +19,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Pattern, Set
 
-import jieba
-
+from src.core.text_utils import tokenize as shared_tokenize
 from src.core.types import ProcessedQuery
 
 
@@ -212,9 +211,9 @@ class QueryProcessor:
     def _tokenize(self, text: str) -> List[str]:
         """将文本切分为词/词项。
 
-        使用 jieba 进行中文分词，与索引侧的分词器（SparseEncoder）
-        保持一致，从而保证 BM25 匹配有效。
-        英文文本由 jieba 原生处理（原样保留）。
+        复用 ``src.core.text_utils.tokenize``，与索引侧的分词器（SparseEncoder）
+        完全一致，从而保证 BM25 匹配有效，且带连字符/下划线的词
+        （``machine-learning``、``GPT-4``）保持完整。
 
         参数:
             text: 待分词的文本
@@ -222,21 +221,7 @@ class QueryProcessor:
         返回:
             词项列表
         """
-        tokens: List[str] = []
-
-        # 使用 jieba 分词（处理中文并保持英文完整）
-        raw_tokens = jieba.lcut(text)
-
-        for token in raw_tokens:
-            token = token.strip()
-            if not token:
-                continue
-            # 跳过纯标点/空白
-            if re.fullmatch(r'[\s\W]+', token, re.UNICODE):
-                continue
-            tokens.append(token)
-
-        return tokens
+        return shared_tokenize(text)
 
     def _filter_keywords(self, tokens: List[str]) -> List[str]:
         """过滤词项以得到有意义的关键词。

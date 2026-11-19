@@ -381,13 +381,34 @@ class IngestionPipeline:
             _notify("embed", 5)
             
             # 通过 BatchProcessor 处理
-            _t0 = time.monotonic()
+            _t0 = time.perf_counter()
             batch_result = self.batch_processor.process(chunks, trace)
-            _elapsed = (time.monotonic() - _t0) * 1000.0
-            
+            _elapsed = (time.perf_counter() - _t0) * 1000.0
+
             dense_vectors = batch_result.dense_vectors
             sparse_stats = batch_result.sparse_stats
-            
+
+            # BatchProcessor 会吞掉单批异常并继续下一批，这里把失败
+            # 上升为明确的错误 —— 否则后续 upsert 只会报
+            # "Chunk count (N) must match vector count (0)" 这种看不出根因的错误。
+            # 注意：仅当失败计数确实为正整数时才报错（便于测试注入 Mock）。
+            failed_chunks = getattr(batch_result, "failed_chunks", 0)
+            if isinstance(failed_chunks, int) and failed_chunks > 0:
+                first_error = next(
+                    (
+                        entry["data"]["error"]
+                        for entry in (trace.stages if trace is not None else [])
+                        if entry["stage"].endswith("_error")
+                        and isinstance(entry.get("data"), dict)
+                        and "error" in entry["data"]
+                    ),
+                    "unknown error",
+                )
+                raise RuntimeError(
+                    f"Encoding failed for {batch_result.failed_chunks}/"
+                    f"{len(chunks)} chunks: {first_error}"
+                )
+
             logger.info(f"  Dense vectors: {len(dense_vectors)} (dim={len(dense_vectors[0]) if dense_vectors else 0})")
             logger.info(f"  Sparse stats: {len(sparse_stats)} documents")
             
@@ -497,6 +518,7 @@ class IngestionPipeline:
                     for img in images
                 ]
                 trace.record_stage("upsert", {
+                    "method": "chroma+bm25+image_storage",
                     "dense_store": {
                         "backend": "ChromaDB",
                         "collection": self.collection,

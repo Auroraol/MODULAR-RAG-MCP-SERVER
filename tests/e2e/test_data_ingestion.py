@@ -126,6 +126,8 @@ class TestDataIngestion:
             [sys.executable, str(PROJECT_ROOT / "scripts" / "ingest.py"), "--help"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=str(PROJECT_ROOT)
         )
         
@@ -348,6 +350,8 @@ class TestIngestScriptIntegration:
             ],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=str(PROJECT_ROOT),
             timeout=300
         )

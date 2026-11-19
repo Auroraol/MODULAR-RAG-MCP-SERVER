@@ -193,7 +193,7 @@ class TestGetToolSchemas:
         assert isinstance(schemas[0], types.Tool)
         assert schemas[0].name == "query_knowledge_hub"
         assert schemas[0].description == "Query the knowledge hub"
-        assert schemas[0].inputSchema == sample_tool_schema
+        assert schemas[0].input_schema == sample_tool_schema
 
 
 # ============================================================================
@@ -225,7 +225,7 @@ class TestExecuteTool:
         )
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is False
+        assert result.is_error is False
         assert len(result.content) == 1
         assert isinstance(result.content[0], types.TextContent)
         assert result.content[0].text == "Found 3 results for: test query"
@@ -289,7 +289,7 @@ class TestExecuteTool:
         )
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         assert "not found" in result.content[0].text.lower()
 
     @pytest.mark.asyncio
@@ -313,7 +313,7 @@ class TestExecuteTool:
             "search", {"query": "test", "invalid_param": "value"}
         )
 
-        assert result.isError is True
+        assert result.is_error is True
         assert "invalid" in result.content[0].text.lower()
 
     @pytest.mark.asyncio
@@ -334,7 +334,7 @@ class TestExecuteTool:
 
         result = await protocol_handler.execute_tool("search", {"query": "test"})
 
-        assert result.isError is True
+        assert result.is_error is True
         assert "internal" in result.content[0].text.lower()
         # 不应泄露实际错误消息
         assert "database" not in result.content[0].text.lower()
@@ -474,7 +474,10 @@ class TestServerProtocolHandlerIntegration:
             handler=search_handler,
         )
 
-        server = create_mcp_server("test-server", "1.0.0", protocol_handler=handler)
+        # 该用例自带同名工具，需跳过默认工具注册以免重复注册
+        server = create_mcp_server(
+            "test-server", "1.0.0", protocol_handler=handler, register_tools=False
+        )
 
         # 校验工具可通过 protocol handler 访问
         tools = handler.get_tool_schemas()
@@ -506,5 +509,5 @@ class TestServerProtocolHandlerIntegration:
         # 通过 protocol handler 执行
         result = await handler.execute_tool("search", {"query": "test", "top_k": 10})
 
-        assert result.isError is False
+        assert result.is_error is False
         assert "Found 10 results for: test" in result.content[0].text

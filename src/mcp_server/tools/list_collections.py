@@ -154,7 +154,7 @@ class ListCollectionsTool:
             RuntimeError: 若客户端创建失败。
         """
         try:
-            import chromadb
+            import chromadb  # noqa: F401  （仅用于检测是否安装）
             from chromadb.config import Settings as ChromaSettings
         except ImportError:
             raise ImportError(
@@ -170,7 +170,9 @@ class ListCollectionsTool:
             persist_path.mkdir(parents=True, exist_ok=True)
         
         try:
-            client = chromadb.PersistentClient(
+            from src.libs.vector_store.chroma_client import create_persistent_client
+
+            client = create_persistent_client(
                 path=str(persist_path),
                 settings=ChromaSettings(
                     anonymized_telemetry=False,
@@ -288,7 +290,7 @@ class ListCollectionsTool:
             # 在线程中执行阻塞的 ChromaDB I/O，避免阻塞
             # 异步事件循环 / MCP stdio 传输
             collections = await asyncio.to_thread(
-                self.list_collections, include_stats,
+                self.list_collections, include_stats=include_stats,
             )
             response_text = self.format_response(collections)
             

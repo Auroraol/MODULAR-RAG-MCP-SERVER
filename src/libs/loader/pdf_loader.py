@@ -24,7 +24,11 @@ except ImportError:
     MARKITDOWN_AVAILABLE = False
 
 try:
-    import fitz  # PyMuPDF
+    # PyMuPDF 2.x 推荐 ``import pymupdf``；``fitz`` 为兼容别名（已废弃）
+    try:
+        import pymupdf as fitz
+    except ImportError:
+        import fitz  # PyMuPDF < 2.0 / 旧版兼容
     PYMUPDF_AVAILABLE = True
 except ImportError:
     PYMUPDF_AVAILABLE = False

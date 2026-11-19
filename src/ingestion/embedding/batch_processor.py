@@ -134,7 +134,7 @@ class BatchProcessor:
         if not chunks:
             raise ValueError("Cannot process empty chunks list")
         
-        start_time = time.time()
+        start_time = time.perf_counter()
         
         # 创建批次
         batches = self._create_batches(chunks)
@@ -147,7 +147,7 @@ class BatchProcessor:
         failed_chunks = 0
         
         for batch_idx, batch in enumerate(batches):
-            batch_start = time.time()
+            batch_start = time.perf_counter()
             
             try:
                 # 稠密编码
@@ -169,7 +169,7 @@ class BatchProcessor:
                         {"error": str(e), "batch_size": len(batch)}
                     )
             
-            batch_duration = time.time() - batch_start
+            batch_duration = time.perf_counter() - batch_start
             
             # 若有 trace 则记录批次耗时
             if trace:
@@ -182,7 +182,7 @@ class BatchProcessor:
                     }
                 )
         
-        total_time = time.time() - start_time
+        total_time = time.perf_counter() - start_time
         
         # 记录整体处理统计信息
         if trace:

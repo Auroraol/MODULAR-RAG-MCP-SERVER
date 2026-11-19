@@ -197,22 +197,24 @@ class GetDocumentSummaryTool:
             return self._chroma_client
         
         try:
-            import chromadb
+            import chromadb  # noqa: F401  （仅用于检测是否安装）
             from chromadb.config import Settings as ChromaSettings
         except ImportError:
             raise ImportError(
                 "chromadb package is required for get_document_summary. "
                 "Install it with: pip install chromadb"
             )
-        
+
         persist_path = Path(self.config.persist_directory).resolve()
-        
+
         if not persist_path.exists():
             logger.warning(f"ChromaDB directory does not exist: {persist_path}")
             persist_path.mkdir(parents=True, exist_ok=True)
-        
+
         try:
-            self._chroma_client = chromadb.PersistentClient(
+            from src.libs.vector_store.chroma_client import create_persistent_client
+
+            self._chroma_client = create_persistent_client(
                 path=str(persist_path),
                 settings=ChromaSettings(
                     anonymized_telemetry=False,

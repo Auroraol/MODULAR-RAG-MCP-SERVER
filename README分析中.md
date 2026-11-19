@@ -1051,3 +1051,107 @@ $ pytest tests/integration/test_mcp_server.py -q
 - 可插拔设计：`DEV_SPEC.md` → 3.3 可插拔架构设计
 - Setup Skill 原文：`.github/skills/setup/SKILL.md`（297 行）
 - Skill 编写规范：`.claude/skills/skill-creator/SKILL.md`（第 116–121 行）
+
+
+
+![image-20261119205344465](README%E5%88%86%E6%9E%90%E4%B8%AD.assets/image-20261119205344465.png)
+
+```
+
+● 先说结论
+     
+  这个项目只有一套 RAG 核心（src/）+ 同一份持久化数据（data/db/chroma），外面挂了几种互不依赖的入口。它们不需要全部启动，你想使用哪个入口，就单独启动对应的那个入口：
+     
+  ┌───────────┬──────────────────────────────────────────────────────────────┬──────────────────────────────────────┐
+  │   入口    │                           启动方式                           │           是否需要常驻运行           │
+  ├───────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+  │ MCP stdio │ 不用手动启动，MCP 客户端会把它作为子进程拉起                 │ 否（每次会话启动一个进程）           │
+  ├───────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+  │ MCP HTTP  │ python -m src.mcp_server.server --transport http --port 8000 │ 是（监听 http://127.0.0.1:8000/mcp） │
+  ├───────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+  │ Dashboard │ python scripts/start_dashboard.py                            │ 是（监听 localhost:8501）            │
+  ├───────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+  │ CLI 脚本  │ scripts/ingest.py / query.py / evaluate.py                   │ 否（执行完即退出）                   │
+  └───────────┴──────────────────────────────────────────────────────────────┴──────────────────────────────────────┘
+
+  具体命令（Windows，项目根目录下）
+
+  # 1) 摄取文档（一次性，必须先做，否则检索是空的）
+  .venv/Scripts/python.exe scripts/ingest.py --path <pdf或目录> --collection default
+
+  # 2) 命令行查询（一次性）
+  .venv/Scripts/python.exe scripts/query.py -q "你的问题" --collection default --verbose
+
+  # 3) Dashboard
+  .venv/Scripts/python.exe scripts/start_dashboard.py            # → http://localhost:8501
+  .venv/Scripts/python.exe scripts/start_dashboard.py --port 8502
+
+  # 4) MCP Server —— stdio（给客户端用，一般不用手敲）
+  .venv/Scripts/python.exe -m src.mcp_server.server
+  # 4b) MCP Server —— HTTP 常驻
+  .venv/Scripts/python.exe -m src.mcp_server.server --transport http --port 8000
+
+  main.py 只是加载配置后转给 src.mcp_server.server，两者等价（main.py:31-44）。参数定义在 src/mcp_server/server.py:165-211。
+
+  关于 MCP 模式：你现在这个会话里已经在运行了
+
+  .mcp.json 已把 modular-rag 配成 stdio server（用 .venv 的 python），.claude/settings.local.json 里 enabledMcpjsonServers 也启用了它。所以 Claude Code 启动时自己拉起了它；我的工具列表里已经有
+  mcp__modular-rag__query_knowledge_hub 等三个工具。不需要你再单独开一个终端。
+
+  只有在你需要让别的程序（远程、容器、自己写的客户端）通过 HTTP 访问时，才要手动跑 --transport http 常驻。
+
+  两个需要注意的地方
+
+  1. 必须先摄取数据。data/db/chroma 里目前是空的，没有文档就没有任何东西可检索。
+  2. config/settings.yaml 里有占位符 Key：llm.api_key 已填好（DeepSeek 中转），但 embedding.api_key 还是 YOUR_OPENAI_API_KEY（第 41 行）、vision_llm.api_key 是 YOUR_RELAY_KEY（第 60 行），环境变量里也没有设。摄取和向量检索都依赖
+     embedding，不填会 401。填真实 Key，或者设 OPENAI_API_KEY 环境变量即可（src/libs/embedding/openai_embedding.py:68-77）。
+
+  我刚做的验证
+
+  - load_settings() 通过（deepseek / openai / chroma）
+  - --transport http 启动成功，Uvicorn 监听正常
+  - scripts/start_dashboard.py 启动成功，可访问
+  - 依赖齐全（uvicorn / mcp / streamlit 均在 .venv 内）
+
+  另外提一句：MCP 和 Dashboard 都在读写同一个 Chroma 持久化目录，别在 Dashboard 摄取大文件的同时跑 CLI 摄取，SQLite 会有锁竞争。
+
+✻ Cogitated for 2m 46s · done 20:41
+
+```
+
+
+
+## 基于 **Streamlit** 的可视化管理面板
+
+```
+(.venv) C:\Users\jindao\Documents\GitHub\MODULAR-RAG-MCP-SERVER>python scripts/start_dashboard.py --port 8502
+Starting Dashboard: C:\Users\jindao\Documents\GitHub\MODULAR-RAG-MCP-SERVER\.venv\Scripts\python.exe -m streamlit run C:\Users\jindao\Documents\GitHub\MODULAR-RAG-MCP-SERVER\src\observability\dashboard\app.py --server.port 8502 --server.address localhost
+2026-11-19 20:46:31.951 Uvicorn server started on localhost:8502
+
+  You can now view your Streamlit app in your browser.
+
+  URL: http://localhost:8502
+
+
+```
+
+
+
+```
+模块 (Module)：streamlit
+脚本形参 (Parameters)：填 run src/observability/dashboard/app.py --server.port 8601
+工作目录 (Working directory)：填项目根目录 C:\Users\jindao\Documents\GitHub\MODULAR-RAG-MCP-SERVER
+```
+
+<img src="README%E5%88%86%E6%9E%90%E4%B8%AD.assets/image-20261119212321933.png" alt="image-20261119212321933" style="zoom:150%;" />
+
+
+
+
+
+### PyCharm 的“脚本” vs “模块”
+
+在 PyCharm 的运行配置里，有两种主要的运行方式：
+
+- **选“脚本 (Script)”**：PyCharm 会执行 `python 你的脚本路径.py`。如果你在这里填了 `app.py`，PyCharm 就会执行 `python app.py`。这就是你上次日志里发生的事情（报了一堆 `missing ScriptRunContext` 警告，因为脱离了 Streamlit 自己的启动器）。
+- **选“模块 (Module)”**：PyCharm 会执行 `python -m 你的模块名`。你在输入框里填入 `streamlit`，PyCharm 就会在后台自动拼出 `python -m streamlit`。

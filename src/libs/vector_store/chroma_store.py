@@ -19,6 +19,7 @@ except ImportError:
 
 from src.core.settings import resolve_path
 from src.libs.vector_store.base_vector_store import BaseVectorStore
+from src.libs.vector_store.chroma_client import create_persistent_client
 
 if TYPE_CHECKING:
     from src.core.settings import Settings
@@ -109,7 +110,7 @@ class ChromaStore(BaseVectorStore):
         
         # 初始化带持久化存储的 ChromaDB 客户端
         try:
-            self.client = chromadb.PersistentClient(
+            self.client = create_persistent_client(
                 path=str(self.persist_directory),
                 settings=ChromaSettings(
                     anonymized_telemetry=False,
