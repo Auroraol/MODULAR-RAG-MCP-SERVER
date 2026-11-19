@@ -770,7 +770,7 @@
 - **修改文件**：
   - `src/core/types.py`（新增 `RetrievalResult` 类型）
   - `src/libs/vector_store/chroma_store.py`（修复：query 返回结果需包含 text 字段）
-  - `src/core/query_engine/dense_retriever.py`
+  - `src/core/query_engine/retriever/dense_retriever.py`
   - `tests/unit/test_dense_retriever.py`
 - **实现类/函数**：
   - `RetrievalResult` dataclass：`chunk_id: str`, `score: float`, `text: str`, `metadata: Dict`
@@ -791,7 +791,7 @@
 - **修改文件**：
   - `src/libs/vector_store/base_vector_store.py`（新增 `get_by_ids()` 抽象方法）
   - `src/libs/vector_store/chroma_store.py`（实现 `get_by_ids()` 方法）
-  - `src/core/query_engine/sparse_retriever.py`
+  - `src/core/query_engine/retriever/sparse_retriever.py`
   - `tests/unit/test_sparse_retriever.py`
 - **实现类/函数**：
   - `BaseVectorStore.get_by_ids(ids: List[str]) -> List[Dict]`：根据 ID 批量获取记录

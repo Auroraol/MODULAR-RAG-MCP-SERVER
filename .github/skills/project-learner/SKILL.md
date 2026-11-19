@@ -48,8 +48,8 @@ Discovery → Check History → User Intent → Select Domain → Select Sub-top
 | D2.4 | Embedding 编码：Dense/Sparse 双编码与 BatchProcessor 批处理 | `src/ingestion/embedding/` |
 | D2.5 | 存储层：VectorUpserter、BM25Indexer、ImageStorage 三类存储协同 | `src/ingestion/storage/` |
 | **D3** | **混合检索（Hybrid Search & Retrieval）** | |
-| D3.1 | Dense Retrieval：向量检索原理与 DenseRetriever 实现 | `src/core/query_engine/dense_retriever.py` |
-| D3.2 | Sparse Retrieval：BM25 稀疏检索与 SparseRetriever 实现 | `src/core/query_engine/sparse_retriever.py` |
+| D3.1 | Dense Retrieval：向量检索原理与 DenseRetriever 实现 | `src/core/query_engine/retriever/dense_retriever.py` |
+| D3.2 | Sparse Retrieval：BM25 稀疏检索与 SparseRetriever 实现 | `src/core/query_engine/retriever/sparse_retriever.py` |
 | D3.3 | Hybrid Search 融合：RRF 算法与 Fusion 模块设计 | `src/core/query_engine/hybrid_search.py`, `fusion.py` |
 | D3.4 | QueryProcessor：查询预处理与查询扩展机制 | `src/core/query_engine/query_processor.py` |
 | D3.5 | Response 构建：ResponseBuilder、CitationGenerator、MultimodalAssembler | `src/core/response/` |
