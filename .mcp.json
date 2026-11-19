@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "modular-rag": {
+      "type": "stdio",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["-m", "src.mcp_server.server"],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}
