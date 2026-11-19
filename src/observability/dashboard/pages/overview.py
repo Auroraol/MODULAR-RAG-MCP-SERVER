@@ -12,6 +12,7 @@ from typing import Any, Dict
 
 import streamlit as st
 
+from src.observability.dashboard.i18n import tr
 from src.observability.dashboard.services.config_service import ConfigService
 
 
@@ -45,29 +46,29 @@ def _safe_collection_stats() -> Dict[str, Any]:
 
 def render() -> None:
     """渲染 Overview 页面。"""
-    st.header("📊 System Overview")
+    st.header(tr("overview.header"))
 
     # ── 组件配置卡片 ──────────────────────────────────────────────
-    st.subheader("🔧 Component Configuration")
+    st.subheader(tr("overview.component_configuration"))
 
     try:
         config_service = ConfigService()
         cards = config_service.get_component_cards()
     except Exception as exc:
-        st.error(f"Failed to load configuration: {exc}")
+        st.error(tr("overview.config_failed", exc=exc))
         return
 
     cols = st.columns(min(len(cards), 3))
     for idx, card in enumerate(cards):
         with cols[idx % len(cols)]:
             st.markdown(f"**{card.name}**")
-            st.caption(f"Provider: `{card.provider}`  \nModel: `{card.model}`")
-            with st.expander("Details"):
+            st.caption(tr("overview.card_caption", provider=card.provider, model=card.model))
+            with st.expander(tr("overview.details")):
                 for k, v in card.extra.items():
                     st.text(f"{k}: {v}")
 
     # ── Collection 统计信息 ───────────────────────────────────────
-    st.subheader("📁 Collection Statistics")
+    st.subheader(tr("overview.collection_statistics"))
 
     stats = _safe_collection_stats()
     if stats:
@@ -77,23 +78,20 @@ def render() -> None:
                 count = info.get("chunk_count", "?")
                 st.metric(label=name, value=count)
                 if count == 0 or count == "?":
-                    st.caption("⚠️ Empty")
+                    st.caption(tr("overview.empty"))
     else:
-        st.warning(
-            "**No collections found or ChromaDB unavailable.** "
-            "Go to the Ingestion Manager page to upload and ingest documents."
-        )
+        st.warning(tr("overview.no_collections"))
 
     # ── Trace 文件统计 ────────────────────────────────────────────
-    st.subheader("📈 Trace Statistics")
+    st.subheader(tr("overview.trace_statistics"))
 
     from src.core.settings import resolve_path
     traces_path = resolve_path("logs/traces.jsonl")
     if traces_path.exists():
         line_count = sum(1 for _ in traces_path.open(encoding="utf-8"))
         if line_count > 0:
-            st.metric("Total traces", line_count)
+            st.metric(tr("overview.total_traces"), line_count)
         else:
-            st.info("No traces recorded yet. Run a query or ingestion first.")
+            st.info(tr("overview.no_traces"))
     else:
-        st.info("No traces recorded yet. Run a query or ingestion first.")
+        st.info(tr("overview.no_traces"))

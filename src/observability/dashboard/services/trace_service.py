@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 # traces 文件的默认路径（绝对路径，与 CWD 无关）
 DEFAULT_TRACES_PATH = resolve_path("logs/traces.jsonl")
 
+# 阶段自身的字段，不属于业务数据（用于兼容扁平格式的 stage dict）
+_STAGE_SELF_FIELDS = {"stage", "timestamp", "elapsed_ms", "data"}
+
 
 class TraceService:
     """用于查询已记录 trace 的只读服务。
@@ -79,11 +82,15 @@ class TraceService:
         stages = trace.get("stages", [])
         timings: List[Dict[str, Any]] = []
         for s in stages:
-            # 原始阶段 dict 包含：stage、timestamp、data（dict）、elapsed_ms
-            # 直接提取内层的 'data' dict，而不是将其展平
-            stage_data = s.get("data", {})
+            # 标准格式：数据嵌套在 'data' 键下（TraceContext.record_stage 的产物）
+            # 兼容格式：数据直接平铺在阶段 dict 上（早期/简化格式）
+            stage_data = s.get("data")
             if not isinstance(stage_data, dict):
-                stage_data = {}
+                stage_data = {
+                    key: value
+                    for key, value in s.items()
+                    if key not in _STAGE_SELF_FIELDS
+                }
             timings.append(
                 {
                     "stage_name": s.get("stage"),

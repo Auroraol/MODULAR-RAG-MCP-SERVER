@@ -13,6 +13,7 @@ from tempfile import NamedTemporaryFile
 
 import streamlit as st
 
+from src.observability.dashboard.i18n import tr
 from src.observability.dashboard.services.data_service import DataService
 
 
@@ -36,18 +37,20 @@ def _run_ingestion(
         tmp_path = tmp.name
 
     _STAGE_LABELS = {
-        "integrity": "🔍 Checking file integrity…",
-        "load": "📄 Loading document…",
-        "split": "✂️ Chunking document…",
-        "transform": "🔄 Transforming chunks (LLM refine + enrich)…",
-        "embed": "🔢 Encoding vectors…",
-        "upsert": "💾 Storing to database…",
+        "integrity": tr("ingestion_manager.stage_integrity"),
+        "load": tr("ingestion_manager.stage_load"),
+        "split": tr("ingestion_manager.stage_split"),
+        "transform": tr("ingestion_manager.stage_transform"),
+        "embed": tr("ingestion_manager.stage_embed"),
+        "upsert": tr("ingestion_manager.stage_upsert"),
     }
 
     def on_progress(stage: str, current: int, total: int) -> None:
         frac = (current - 1) / total  # 阶段刚开始，显示部分进度
         label = _STAGE_LABELS.get(stage, stage)
-        progress_bar.progress(frac, text=f"[{current}/{total}] {label}")
+        progress_bar.progress(
+            frac, text=tr("ingestion_manager.progress", current=current, total=total, label=label)
+        )
         status_text.caption(label)
 
     trace = TraceContext(trace_type="ingestion")
@@ -62,10 +65,12 @@ def _run_ingestion(
             trace=trace,
             on_progress=on_progress,
         )
-        progress_bar.progress(1.0, text="✅ Complete")
-        status_text.success(f"Successfully ingested **{uploaded_file.name}** into collection **{collection}**.")
+        progress_bar.progress(1.0, text=tr("ingestion_manager.complete"))
+        status_text.success(
+            tr("ingestion_manager.success", file=uploaded_file.name, collection=collection)
+        )
     except Exception as exc:
-        status_text.error(f"Ingestion failed: {exc}")
+        status_text.error(tr("ingestion_manager.failed", exc=exc))
     finally:
         TraceCollector().collect(trace)
         # 清理临时文件
@@ -77,57 +82,59 @@ def _run_ingestion(
 
 def render() -> None:
     """渲染 Ingestion Manager 页面。"""
-    st.header("📥 Ingestion Manager")
+    st.header(tr("ingestion_manager.header"))
 
     # ── 上传区域 ──────────────────────────────────────────────────
-    st.subheader("📤 Upload & Ingest")
+    st.subheader(tr("ingestion_manager.upload_section"))
 
     col1, col2 = st.columns([3, 1])
     with col1:
         uploaded = st.file_uploader(
-            "Select a file to ingest",
+            tr("ingestion_manager.file_label"),
             type=["pdf", "txt", "md", "docx"],
             key="ingest_uploader",
         )
     with col2:
-        collection = st.text_input("Collection", value="default", key="ingest_collection")
+        collection = st.text_input(
+            tr("common.collection"), value="default", key="ingest_collection"
+        )
 
     if uploaded is not None:
-        if st.button("🚀 Start Ingestion", key="btn_ingest"):
-            progress_bar = st.progress(0, text="Preparing…")
+        if st.button(tr("ingestion_manager.start"), key="btn_ingest"):
+            progress_bar = st.progress(0, text=tr("ingestion_manager.preparing"))
             status_text = st.empty()
             _run_ingestion(uploaded, collection.strip() or "default", progress_bar, status_text)
 
     st.divider()
 
     # ── 文档管理区域 ──────────────────────────────────────────────
-    st.subheader("🗑️ Manage Documents")
+    st.subheader(tr("ingestion_manager.manage"))
 
     try:
         svc = DataService()
         docs = svc.list_documents()
     except Exception as exc:
-        st.error(f"Failed to load documents: {exc}")
+        st.error(tr("ingestion_manager.load_failed", exc=exc))
         return
 
     if not docs:
-        st.info(
-            "**No documents ingested yet.** "
-            "Upload a PDF, TXT, MD, or DOCX file above and click \"Start Ingestion\" to begin."
-        )
+        st.info(tr("ingestion_manager.no_docs"))
         return
 
     for idx, doc in enumerate(docs):
         col_info, col_btn = st.columns([4, 1])
         with col_info:
             st.markdown(
-                f"**{doc['source_path']}** — "
-                f"collection: `{doc.get('collection', '—')}` | "
-                f"chunks: {doc['chunk_count']} | "
-                f"images: {doc['image_count']}"
+                tr(
+                    "ingestion_manager.doc_line",
+                    path=doc["source_path"],
+                    collection=doc.get("collection", "—"),
+                    chunks=doc["chunk_count"],
+                    images=doc["image_count"],
+                )
             )
         with col_btn:
-            if st.button("🗑️ Delete", key=f"del_{idx}"):
+            if st.button(tr("ingestion_manager.delete"), key=f"del_{idx}"):
                 try:
                     result = svc.delete_document(
                         source_path=doc["source_path"],
@@ -136,11 +143,14 @@ def render() -> None:
                     )
                     if result.success:
                         st.success(
-                            f"Deleted: {result.chunks_deleted} chunks, "
-                            f"{result.images_deleted} images removed."
+                            tr(
+                                "ingestion_manager.deleted",
+                                chunks=result.chunks_deleted,
+                                images=result.images_deleted,
+                            )
                         )
                         st.rerun()
                     else:
-                        st.warning(f"Partial delete. Errors: {result.errors}")
+                        st.warning(tr("ingestion_manager.partial", errors=result.errors))
                 except Exception as exc:
-                    st.error(f"Delete failed: {exc}")
+                    st.error(tr("ingestion_manager.delete_failed", exc=exc))
