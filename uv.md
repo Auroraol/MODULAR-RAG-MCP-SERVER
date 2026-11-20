@@ -89,4 +89,4 @@ uv sync        # 按 uv.lock 精确还原，保证版本一致
 ```
 
 
-日常只用记住 uv add 和 uv sync 两个命令，其他都是按需查。
+日常只用记住uv init、 uv add 和 uv sync 两个命令，其他都是按需查。
