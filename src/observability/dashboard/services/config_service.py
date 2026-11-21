@@ -84,7 +84,7 @@ class ConfigService:
         cards.append(ComponentInfo(
             name="Retrieval(检索)",
             provider="hybrid",
-            model="dense(稠密检索——语义匹配) + sparse(稀疏检索——关键词匹配) + RRF(Reciprocal Rank Fusion，倒数排名融合——合并两路结果)",
+            model="dense(稠密检索如向量检索——语义匹配) + sparse(稀疏检索如BM25检索——关键词匹配) + RRF(Reciprocal Rank Fusion，倒数排名融合——合并两路结果)",
             extra={
                 "dense_top_k": s.retrieval.dense_top_k,
                 "sparse_top_k": s.retrieval.sparse_top_k,

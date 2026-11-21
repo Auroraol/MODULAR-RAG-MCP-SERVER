@@ -264,7 +264,7 @@ flowchart TB
 
 
 
-## 四、在线检索链路时序
+## 四、在线检索-链路时序
 
 ```mermaid
 flowchart TB
@@ -325,6 +325,16 @@ flowchart TB
     style RR fill:#fff7ed,stroke:#f97316
 ```
 
+```
+                   ┌──> Dense (Chroma 向量检索 20 条)：抓语义
+用户输入 "BOM25怎么接线" │
+                   └──> Sparse (BM25 内存检索 20 条)：抓关键词 
+                            ↓
+                     RRF 融合算法（倒数排名融合）
+                            ↓
+              找出既语义相关、又包含关键字的 Top 10
+```
+
 
 
 ```mermaid
@@ -365,7 +375,7 @@ sequenceDiagram
 
 ---
 
-## 五、离线数据摄入链路时序
+## 五、离线数据摄入-链路时序
 
 ```mermaid
 sequenceDiagram
@@ -1278,3 +1288,12 @@ ollama run --verbose qwen3-embedding:0.6b "这是一段需要被向量化的测�
 ## 向量数据库
 
 使用chroma 数据库
+
+
+
+
+
+```
+
+```
+
