@@ -203,9 +203,68 @@ flowchart TB
 4. **可观测贯穿全链路**：Core 层每个阶段通过 `TraceContext.record_stage()` 打点，最终由 `TraceCollector` 落盘为 JSON Lines，供 Dashboard 与评估模块消费。
 5. **多模态闭环**：Ingestion 阶段用 Vision LLM 生成图片描述并写入 `metadata.image_captions`，检索阶段命中后由 `ResponseBuilder` 组装为 `ImageContent`（Base64）返回。
 
----
 
-## 四、检索链路时序
+
+
+
+```mermaid
+flowchart TB
+    subgraph OFFLINE["🛠 离线索引阶段 (Offline Indexing)"]
+        DS["数据源<br/>PDF / 网页 / DB"] --> DP["文档解析与清洗<br/>OCR / 去重 / 版面还原"]
+        DP --> CK["切块 Chunking<br/>500–800 token<br/>重叠 10%–15%"]
+        CK --> TR["Transform 层（逐块处理）<br/>ChunkRefiner 清洗<br/>MetadataEnricher 标题/摘要/标签<br/>ImageCaptioner 图片→文字描述"]
+        TR --> EM["向量化 Embedding<br/>DenseEncoder + SparseEncoder<br/>查询/文档须同一模型"]
+        EM --> VDB[("向量库 + 元数据<br/>Chroma / Milvus / Qdrant")]
+    end
+
+    subgraph ROUTER["🧭 意图路由与改写层（Agent 编排）"]
+        IQ["用户查询"] --> INT["意图识别<br/>intent_node.py<br/>FAQ / 知识问答 / 追问 / 问候"]
+        INT --> RT["意图路由<br/>router.py<br/>选择检索策略或直答"]
+        RT -->|"需要检索"| RW["查询改写<br/>改写 / HyDE / 子查询扩展"]
+        RT -->|"FAQ / 问候 / 直答"| DA["直接回答<br/>不走向量检索"]
+        RT -->|"转人工 / 兜底"| HB["兜底处理"]
+        RW --> Q
+    end
+
+    subgraph ONLINE["⚡ 在线查询阶段 (Online Serving)"]
+        Q["改写后的查询"] --> S1["步骤1 处理查询<br/>query_processor.py<br/>关键词提取 + 同义词 + 过滤器解析"]
+        S1 --> S2D["步骤2a 稠密检索<br/>dense_retriever.py<br/>Embedding → Chroma 向量检索"]
+        S1 --> S2S["步骤2b 稀疏检索<br/>sparse_retriever.py<br/>BM25 关键词检索"]
+        S2D --> S3["步骤3 降级处理<br/>某路失败就用另一路"]
+        S2S --> S3
+        S3 --> S4["步骤4 融合<br/>fusion.py<br/>RRF 倒数排名融合"]
+        S4 --> CR["粗排 Coarse Rank（可选）<br/>轻量模型快速筛选<br/>Top-100 → 30"]
+        CR --> RR["重排序 Rerank<br/>Cross-Encoder 精排<br/>Query-Chunk 深度交叉打分"]
+        RR --> S5["步骤5 元数据过滤<br/>metadata filter"]
+        S5 --> S6["步骤6 Top-K 截断<br/>取 Top 3–8"]
+        S6 --> PB["Prompt 组装"]
+        PB --> LLM["LLM 生成<br/>带 citations"]
+    end
+
+    VDB -. "向量检索命中" .-> S2D
+    VDB -. "BM25 命中" .-> S2S
+
+    subgraph SUPPORT["🔧 贯穿支撑体系"]
+        EV["评估<br/>召回/精度/忠实度/延迟"]
+        OB["可观测性<br/>Trace / 耗时 / 坏例"]
+        KU["知识更新<br/>增量 / 全量 / 失效"]
+    end
+
+    ONLINE -.-> SUPPORT
+    OFFLINE -.-> SUPPORT
+
+    style OFFLINE fill:#e8f4fd,stroke:#3b82f6
+    style ONLINE fill:#fef3e2,stroke:#f59e0b
+    style SUPPORT fill:#f0fdf4,stroke:#22c55e
+    style TR fill:#fff7ed,stroke:#f97316,stroke-dasharray: 5 3
+    style ROUTER fill:#f5f3ff,stroke:#8b5cf6
+    style CR fill:#f1f5f9,stroke:#94a3b8,stroke-dasharray: 5 3
+    style RR fill:#fff7ed,stroke:#f97316
+```
+
+
+
+## 四、在线检索链路时序
 
 ```mermaid
 flowchart TB
@@ -306,7 +365,7 @@ sequenceDiagram
 
 ---
 
-## 五、离线摄取链路时序
+## 五、离线数据摄入链路时序
 
 ```mermaid
 sequenceDiagram
@@ -337,6 +396,27 @@ sequenceDiagram
         P->>IC: mark_success(file_hash)
         P-->>CLI: PipelineResult(chunk_count, image_count)
     end
+```
+
+代码: src/ingestion/pipeline.py
+
+```python
+# 开启离线数据摄入(Ingestion Pipeline)
+# Document （文档加载）
+# chunking （切分
+# Transform (增强)
+# Embedding （向量化）
+# storage （存储）)
+pipeline = IngestionPipeline(settings, collection=collection)
+pipeline.run(
+    file_path=tmp_path,
+    trace=trace,
+    on_progress=on_progress,
+)
+progress_bar.progress(1.0, text=tr("ingestion_manager.complete"))
+status_text.success(
+    tr("ingestion_manager.success", file=uploaded_file.name, collection=collection)
+)
 ```
 
 ---
@@ -1155,3 +1235,46 @@ Starting Dashboard: C:\Users\jindao\Documents\GitHub\MODULAR-RAG-MCP-SERVER\.ven
 
 - **选“脚本 (Script)”**：PyCharm 会执行 `python 你的脚本路径.py`。如果你在这里填了 `app.py`，PyCharm 就会执行 `python app.py`。这就是你上次日志里发生的事情（报了一堆 `missing ScriptRunContext` 警告，因为脱离了 Streamlit 自己的启动器）。
 - **选“模块 (Module)”**：PyCharm 会执行 `python -m 你的模块名`。你在输入框里填入 `streamlit`，PyCharm 就会在后台自动拼出 `python -m streamlit`。
+
+
+
+# 中间件选择
+
+## LLM
+
+模型选择: LLM 提供商(deepseek) 和Ollama（本地开源模型）
+
+![image-20261121223237798](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20261121223237798.png)
+
+官网：[https://ollama.com/](https://ollama.com/)
+
+![image-20260212175831694](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260212175831694.png)
+
+
+
+## Embedding 
+
+使用 Ollama 上的 Embedding 模型**`qwen3-embedding:0.6b`**
+
+```yaml
+  embedding:
+    provider: "ollama"  # 可选项: openai, azure, ollama
+    model: "qwen3-embedding:0.6b"
+    dimensions: 1024  # qwen3-embedding:0.6b 输出维度 (不传递给API, 仅用于验证)
+    # Ollama 专属设置（若 provider 为 ollama）:
+    base_url: "http://localhost:11434"
+    
+ 
+```
+
+测试
+
+```
+ollama run --verbose qwen3-embedding:0.6b "这是一段需要被向量化的测试文本"    
+```
+
+![image-20261121232540327](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20261121232540327.png)
+
+## 向量数据库
+
+使用chroma 数据库

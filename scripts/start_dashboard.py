@@ -27,6 +27,15 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8501)
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
+    parser.add_argument(
+        "-c",
+        "--config",
+        "--settings",
+        dest="settings",
+        type=str,
+        default=None,
+        help="配置文件路径（默认 config/settings.yaml），如 -c config/settings_dev.yaml",
+    )
     args = parser.parse_args()
 
     root = find_project_root(Path(__file__).resolve().parent)
@@ -45,6 +54,16 @@ def main() -> None:
 
     # 清掉调试器注入的环境变量，避免子进程被 pydevd 干扰
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYDEVD_")}
+
+    # 通过 SETTINGS_PATH 传给 Streamlit 子进程，load_settings() 会读取
+    if args.settings:
+        settings_path = Path(args.settings)
+        if not settings_path.is_absolute():
+            settings_path = root / settings_path
+        if not settings_path.exists():
+            raise SystemExit(f"Error: 配置文件不存在: {settings_path}")
+        env["SETTINGS_PATH"] = str(settings_path.resolve())
+        print(f"Settings: {env['SETTINGS_PATH']}")
 
     url = f"http://{args.host}:{args.port}"
     if not args.no_browser:

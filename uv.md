@@ -88,5 +88,26 @@ uv sync        # 按 uv.lock 精确还原，保证版本一致
 看依赖树	uv tree
 ```
 
+## Go # uv
 
-日常只用记住uv init、 uv add 和 uv sync 两个命令，其他都是按需查。
+命令对应关系
+
+```
+# Go                          # uv
+go mod init myproj             uv init
+go get github.com/x/y           uv add y
+go get -u github.com/x/y         uv lock --upgrade-package y
+go mod tidy (扫描源码自动补)      uv sync  (需要先手动 uv add/remove 补齐声明)
+go mod download               uv sync
+go mod graph                 uv tree
+go mod why github.com/x/y        uv tree --invert y
+go mod verify                uv sync --frozen
+```
+
+文件对应关系
+
+| Go              | uv/Python          | 说明                                          |
+| :-------------- | :----------------- | :-------------------------------------------- |
+| `go.mod`        | `pyproject.toml`   | 声明直接依赖 + 版本约束（人可读、可手改）     |
+| `go.sum`        | `uv.lock`          | 锁定精确版本 + 校验哈希（自动生成、必须提交） |
+| 模块路径 + 版本 | `name` + `version` | 项目标识                                      |

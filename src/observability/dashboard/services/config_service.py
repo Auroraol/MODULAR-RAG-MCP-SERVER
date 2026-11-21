@@ -58,7 +58,7 @@ class ConfigService:
 
         # LLM
         cards.append(ComponentInfo(
-            name="LLM",
+            name="LLM(大模型)",
             provider=s.llm.provider,
             model=s.llm.model,
             extra={"temperature": s.llm.temperature, "max_tokens": s.llm.max_tokens},
@@ -66,7 +66,7 @@ class ConfigService:
 
         # Embedding
         cards.append(ComponentInfo(
-            name="Embedding",
+            name="Embedding(向量化)",
             provider=s.embedding.provider,
             model=s.embedding.model,
             extra={"dimensions": s.embedding.dimensions},
@@ -74,7 +74,7 @@ class ConfigService:
 
         # VectorStore
         cards.append(ComponentInfo(
-            name="Vector Store",
+            name="Vector Store(向量数据库)",
             provider=s.vector_store.provider,
             model=s.vector_store.collection_name,
             extra={"persist_directory": s.vector_store.persist_directory},
@@ -82,9 +82,9 @@ class ConfigService:
 
         # 检索
         cards.append(ComponentInfo(
-            name="Retrieval",
+            name="Retrieval(检索)",
             provider="hybrid",
-            model="dense + sparse + RRF",
+            model="dense(稠密检索——语义匹配) + sparse(稀疏检索——关键词匹配) + RRF(Reciprocal Rank Fusion，倒数排名融合——合并两路结果)",
             extra={
                 "dense_top_k": s.retrieval.dense_top_k,
                 "sparse_top_k": s.retrieval.sparse_top_k,
@@ -94,7 +94,7 @@ class ConfigService:
 
         # Rerank
         cards.append(ComponentInfo(
-            name="Reranker",
+            name="Reranker(重排序)",
             provider=s.rerank.provider if s.rerank.enabled else "disabled",
             model=s.rerank.model if s.rerank.enabled else "-",
             extra={"enabled": s.rerank.enabled, "top_k": s.rerank.top_k},
@@ -103,16 +103,17 @@ class ConfigService:
         # 视觉 LLM
         if s.vision_llm and s.vision_llm.enabled:
             cards.append(ComponentInfo(
-                name="Vision LLM",
+                name="Vision LLM(视觉 LLM)",
                 provider=s.vision_llm.provider,
                 model=s.vision_llm.model,
                 extra={"max_image_size": s.vision_llm.max_image_size},
             ))
 
+
         # 摄入
         if s.ingestion:
             cards.append(ComponentInfo(
-                name="Ingestion",
+                name="Ingestion(数据摄取+切块)",
                 provider=s.ingestion.splitter,
                 model="-",
                 extra={

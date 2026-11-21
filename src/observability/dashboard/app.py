@@ -86,8 +86,9 @@ def main() -> None:
 #     模块 (Module)：streamlit
 #     脚本形参 (Parameters)：填 run src/observability/dashboard/app.py --server.port 8601
 #     工作目录 (Working directory)：填项目根目录（如 C:\Users\<用户名>\Documents\GitHub\MODULAR-RAG-MCP-SERVER）
+#     环境变量 (Environment Variables)：填 config/settings_dev.yaml
 # 脚本启动:
 #     scripts/start_dashboard.py，就是为了绕过这种 IDE 配置的坑,
-#     使用方法 python scripts/start_dashboard.py --port 8502
+#     使用方法 python scripts/start_dashboard.py -c config/settings_dev.yaml
 if __name__ == "__main__":
     main()

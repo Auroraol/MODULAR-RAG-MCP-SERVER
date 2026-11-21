@@ -59,6 +59,12 @@ def _run_ingestion(
     trace.metadata["source"] = "dashboard"
 
     try:
+        # 开启离线数据摄入(Ingestion Pipeline)
+        # Document （文档加载）
+        # chunking （切分
+        # Transform (增强)
+        # Embedding （向量化）
+        # storage （存储）)
         pipeline = IngestionPipeline(settings, collection=collection)
         pipeline.run(
             file_path=tmp_path,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -309,10 +310,12 @@ def load_settings(path: str | Path | None = None) -> Settings:
     """从 YAML 文件加载配置并校验必填字段。
 
     参数:
-        path: settings YAML 的路径。默认为
-            ``<repo>/config/settings.yaml``（绝对路径，与 CWD 无关）。
+        path: settings YAML 的路径。默认取环境变量 ``SETTINGS_PATH``，
+            再回退到 ``<repo>/config/settings.yaml``（绝对路径，与 CWD 无关）。
     """
-    settings_path = Path(path) if path is not None else DEFAULT_SETTINGS_PATH
+    settings_path = Path(
+        path or os.environ.get("SETTINGS_PATH") or DEFAULT_SETTINGS_PATH
+    )
     if not settings_path.is_absolute():
         settings_path = resolve_path(settings_path)
     if not settings_path.exists():
