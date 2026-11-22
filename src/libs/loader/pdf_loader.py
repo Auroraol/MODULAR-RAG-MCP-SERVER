@@ -110,7 +110,13 @@ class PdfLoader(BaseLoader):
         except Exception as e:
             logger.error(f"Failed to parse PDF {path}: {e}")
             raise RuntimeError(f"PDF parsing failed: {e}") from e
-        
+
+        if not text_content.strip():
+            raise ValueError(
+                f"No extractable text in {path.name}. "
+                f"Scanned/image-only PDFs need OCR before ingestion."
+            )
+
         # 初始化元数据
         metadata: Dict[str, Any] = {
             "source_path": str(path),

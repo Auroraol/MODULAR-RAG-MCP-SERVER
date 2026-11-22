@@ -63,9 +63,12 @@ class OllamaEmbedding(BaseEmbedding):
         self.model = settings.embedding.model
 
         # Base URL 优先级：显式参数 > settings > 环境变量 > 默认值
+        settings_base_url = getattr(settings.embedding, "base_url", None)
+        if not isinstance(settings_base_url, str) or not settings_base_url:
+            settings_base_url = None
         self.base_url = (
             base_url
-            or getattr(settings.embedding, 'base_url', None)
+            or settings_base_url
             or os.environ.get("OLLAMA_BASE_URL")
             or self.DEFAULT_BASE_URL
         )

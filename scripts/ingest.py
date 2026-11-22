@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
         "--path", "-p",
         required=True,
         help="Path to file or directory to ingest. "
-             "If directory, processes all PDF files recursively."
+             "If directory, processes all supported files recursively."
     )
     
     parser.add_argument(
@@ -108,13 +108,14 @@ def discover_files(path: str, extensions: List[str] = None) -> List[Path]:
 
     参数:
         path: 文件或目录路径
-        extensions: 要包含的文件扩展名列表 (default: ['.pdf'])
+        extensions: 要包含的文件扩展名列表 (default: 所有 LoaderFactory 支持的格式)
 
     返回:
         待处理的文件路径列表
     """
     if extensions is None:
-        extensions = ['.pdf']
+        from src.libs.loader.loader_factory import LoaderFactory
+        extensions = sorted(LoaderFactory.supported_extensions())
     
     path = Path(path)
     

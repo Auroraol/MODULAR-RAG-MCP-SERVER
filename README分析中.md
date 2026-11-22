@@ -1237,16 +1237,13 @@ Starting Dashboard: C:\Users\jindao\Documents\GitHub\MODULAR-RAG-MCP-SERVER\.ven
 
 
 
+- 
 
+# 开发环境
 
-### PyCharm 的“脚本” vs “模块”
+使用uv D:\Github\1\MODULAR-RAG-MCP-SERVER\uv.md
 
-在 PyCharm 的运行配置里，有两种主要的运行方式：
-
-- **选“脚本 (Script)”**：PyCharm 会执行 `python 你的脚本路径.py`。如果你在这里填了 `app.py`，PyCharm 就会执行 `python app.py`。这就是你上次日志里发生的事情（报了一堆 `missing ScriptRunContext` 警告，因为脱离了 Streamlit 自己的启动器）。
-- **选“模块 (Module)”**：PyCharm 会执行 `python -m 你的模块名`。你在输入框里填入 `streamlit`，PyCharm 就会在后台自动拼出 `python -m streamlit`。
-
-
+- 
 
 # 中间件选择
 
@@ -1297,3 +1294,17 @@ ollama run --verbose qwen3-embedding:0.6b "这是一段需要被向量化的测�
 
 ```
 
+
+
+
+
+# 启动
+
+在 PyCharm 的运行配置里，有两种主要的运行方式：
+
+- **选“脚本 (Script)”**：PyCharm 会执行 `python 你的脚本路径.py`。如果你在这里填了 `app.py`，PyCharm 就会执行 `python app.py`。
+- **选“模块 (Module)”**：PyCharm 会执行 `python -m 你的模块名`。你在输入框里填入 `streamlit`，PyCharm 就会在后台自动拼出 `python -m streamlit`。
+
+![image-20261122195314891](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20261122195314891.png)
+
+![image-20261122195359293](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20261122195359293.png)

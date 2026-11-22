@@ -26,7 +26,7 @@ from src.observability.logger import get_logger
 
 # Libs 层导入
 from src.libs.loader.file_integrity import SQLiteIntegrityChecker
-from src.libs.loader.pdf_loader import PdfLoader
+from src.libs.loader.loader_factory import LoaderFactory
 from src.libs.embedding.embedding_factory import EmbeddingFactory
 from src.libs.vector_store.vector_store_factory import VectorStoreFactory
 
@@ -136,16 +136,16 @@ class IngestionPipeline:
         # 初始化所有组件
         logger.info("Initializing Ingestion Pipeline components...")
         
-        # 阶段 1: 文件完整性检查
+        # 阶段 1: 文件完整性检查(用于增量摄入的文件完整性检查器)
         self.integrity_checker = SQLiteIntegrityChecker(db_path=str(resolve_path("data/db/ingestion_history.db")))
         logger.info("  ✓ FileIntegrityChecker initialized")
         
-        # 阶段 2: 加载器
-        self.loader = PdfLoader(
+        # 阶段 2: 加载器(按扩展名分发: pdf / txt / md / csv / json / docx / pptx / xlsx / html)
+        self.loader = LoaderFactory(
             extract_images=True,
             image_storage_dir=str(resolve_path(f"data/images/{collection}"))
         )
-        logger.info("  ✓ PdfLoader initialized")
+        logger.info(f"  ✓ LoaderFactory initialized (supported: {', '.join(sorted(LoaderFactory.supported_extensions()))})")
         
         # 阶段 3: 切分器
         self.chunker = DocumentChunker(settings)
@@ -162,7 +162,7 @@ class IngestionPipeline:
         has_vision = self.image_captioner.llm is not None
         logger.info(f"  ✓ ImageCaptioner initialized (vision_enabled={has_vision})")
         
-        # 阶段 5: 编码器
+        # 阶段 5: 编码器(向量化)
         embedding = EmbeddingFactory.create(settings)
         batch_size = settings.ingestion.batch_size if settings.ingestion else 100
         self.dense_encoder = DenseEncoder(embedding, batch_size=batch_size)
@@ -255,7 +255,8 @@ class IngestionPipeline:
             _notify("load", 2)
             
             _t0 = time.monotonic()
-            document = self.loader.load(str(file_path))
+            loader = self.loader.get_loader(str(file_path))
+            document = loader.load(str(file_path))
             _elapsed = (time.monotonic() - _t0) * 1000.0
             
             text_preview = document.text[:200].replace('\n', ' ') + "..." if len(document.text) > 200 else document.text
@@ -273,7 +274,7 @@ class IngestionPipeline:
             }
             if trace is not None:
                 trace.record_stage("load", {
-                    "method": "markitdown",
+                    "method": type(loader).__name__,
                     "doc_id": document.id,
                     "text_length": len(document.text),
                     "image_count": image_count,

@@ -95,9 +95,11 @@ def render() -> None:
 
     col1, col2 = st.columns([3, 1])
     with col1:
+        from src.libs.loader.loader_factory import LoaderFactory
+
         uploaded = st.file_uploader(
             tr("ingestion_manager.file_label"),
-            type=["pdf", "txt", "md", "docx"],
+            type=sorted(e.lstrip(".") for e in LoaderFactory.supported_extensions()),
             key="ingest_uploader",
         )
     with col2:
