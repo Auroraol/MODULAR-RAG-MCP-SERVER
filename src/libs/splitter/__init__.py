@@ -4,7 +4,7 @@ Splitter 模块。
 本包包含文本切分器抽象与实现：
 - 切分器基类
 - 切分器工厂
-- 具体实现（Recursive、Semantic、FixedLength）
+- 具体实现（Recursive(内部使用LangChain的切分器)、Semantic、FixedLength）
 """
 
 from src.libs.splitter.base_splitter import BaseSplitter

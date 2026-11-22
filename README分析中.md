@@ -429,7 +429,21 @@ status_text.success(
 )
 ```
 
+### 加载
+
+
+
+### 切块
+
+常见分块策略
+
+
+
 ---
+
+
+
+
 
 ## 六、Setup Skill 是怎么实现的
 
@@ -1308,3 +1322,48 @@ ollama run --verbose qwen3-embedding:0.6b "这是一段需要被向量化的测�
 ![image-20261122195314891](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20261122195314891.png)
 
 ![image-20261122195359293](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20261122195359293.png)
+
+
+
+
+
+# 数据库
+
+## SQLite 
+
+SQLite 是 Python 内置支持的，不需要安装任何额外的数据库服务
+
+### ingestion_history表(用于增量摄入的文件完整性检查器)
+
+data/db/ingestion_history.db
+
+```mysql
+CREATE TABLE IF NOT EXISTS ingestion_history (
+-- 文件内容的哈希值（如 MD5/SHA256），作为主键。
+-- 作用：即使文件被重命名或移动路径，只要内容没变，哈希就不变，防止重复解析和向量化。
+file_hash TEXT PRIMARY KEY,
+
+-- 文件的原始绝对路径或相对路径。
+-- 作用：记录文件来源，方便在解析失败或需要人工回溯时找到原文件。
+file_path TEXT NOT NULL,
+
+-- 当前处理状态。默认设为 'pending'（待处理）
+-- 预期枚举值：'pending'（排队中）, 'processing'（处理中）, 'success'（成功）, 'failed'（失败）。
+status TEXT NOT NULL DEFAULT 'pending',
+
+-- 数据写入的目标向量库集合（Collection）名称。
+-- 作用：支持多知识库场景（例如分给 'knowledge_hub' 或 'customer_service'），记录数据去向。
+collection TEXT,
+
+-- 错误信息。
+-- 作用：当 status 为 'failed' 时，记录具体的报错堆栈或原因，方便排查是 PDF 解析问题还是 API 超时。
+error_msg TEXT,
+
+-- 首次提交/开始处理的时间。数据库层面提供默认值兜底。
+processed_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+
+-- 记录最后一次状态更新的时间。用于排查任务是否卡死，或用于定时清理。
+updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+)
+```
+

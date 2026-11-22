@@ -262,16 +262,17 @@ class IngestionPipeline:
             text_preview = document.text[:200].replace('\n', ' ') + "..." if len(document.text) > 200 else document.text
             image_count = len(document.metadata.get("images", []))
             
-            logger.info(f"  Document ID: {document.id}")
-            logger.info(f"  Text length: {len(document.text)} chars")
-            logger.info(f"  Images extracted: {image_count}")
-            logger.info(f"  Preview: {text_preview[:100]}...")
+            logger.info(f"  文档 ID: {document.id}")
+            logger.info(f"  文本长度: {len(document.text)} 字符")
+            logger.info(f"  提取图片数: {image_count}")
+            logger.info(f"  内容预览: {text_preview[:100]}...")
             
             stages["loading"] = {
                 "doc_id": document.id,
                 "text_length": len(document.text),
                 "image_count": image_count
             }
+            # trace记录加载阶段
             if trace is not None:
                 trace.record_stage("load", {
                     "method": type(loader).__name__,
@@ -317,7 +318,7 @@ class IngestionPipeline:
                 }, elapsed_ms=_elapsed)
             
             # ─────────────────────────────────────────────────────────────
-            # 阶段 4: Transform 流水线
+            # 阶段 4: Transform 流水线(增强)
             # ─────────────────────────────────────────────────────────────
             logger.info("\n🔄 Stage 4: Transform Pipeline")
             _notify("transform", 4)

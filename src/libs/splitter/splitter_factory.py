@@ -23,6 +23,7 @@ def _register_builtin_providers() -> None:
     # 在此导入以避免循环导入，并优雅处理缺失的依赖
     try:
         from src.libs.splitter.recursive_splitter import RecursiveSplitter
+        # 注册递归字符文本切分器, TODO 后续新增策略时请在此处添加
         SplitterFactory.register_provider("recursive", RecursiveSplitter)
     except ImportError:
         pass  # RecursiveSplitter 不可用（缺少 langchain 依赖）
