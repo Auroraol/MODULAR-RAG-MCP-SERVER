@@ -290,7 +290,7 @@ class IngestionPipeline:
             _notify("split", 3)
             
             _t0 = time.monotonic()
-            # 切块 + 填充图片到元数据中
+            # 文本切块 + 填充图片到元数据中
             chunks = self.chunker.split_document(document)
             _elapsed = (time.monotonic() - _t0) * 1000.0
             
