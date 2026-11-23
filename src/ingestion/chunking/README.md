@@ -42,7 +42,18 @@ ingestion:
 
 短文段会被合并回 `chunk_size` 以内，相邻 Chunk 保留 `chunk_overlap` 字符重叠。超过上限的段落自动降级到下一级分隔符。
 
-> 注意：settings 注释里列出了 `semantic` / `fixed_length`，但 **`_register_builtin_providers()` 目前只注册了 `recursive`**（`splitter_factory.py:25-28`），配置成其它值会直接抛 `Unsupported Splitter provider`。
+> 已注册的 provider：`recursive`（默认）、`fixed_length`、`markdown`、`semantic`、`structure`、`propositional`（`splitter_factory.py:_register_builtin_providers`）。`markdown` 依赖 `langchain-text-splitters`，缺失时自动不注册。
+
+各策略适用场景：
+
+| provider | 适用 |
+|---|---|
+| `recursive` | 默认，混合格式通用 |
+| `fixed_length` | 无结构纯文本、需要严格等长块的场景 |
+| `markdown` | Markdown 文档，保护代码块与标题 |
+| `structure` | Loader 输出的 Markdown（PDF/Office 均会转成 Markdown），按标题切章节、每块带标题路径 |
+| `semantic` | 主题跨度大的长文，愿付一次 embedding 成本 |
+| `propositional` | 高价值条款/FAQ，每块是 LLM 抽出的自包含原子命题，最贵 |
 
 ## 常见分块策略对比
 

@@ -437,7 +437,288 @@ status_text.success(
 
 常见分块策略
 
+![image-20261123173711674](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20261123173711674.png)
 
+##### 16.5.3.2 常见分块策略
+
+###### 16.5.3.2.1 固定长度分块
+
+**固定长度分块**按照固定字符数或 Token 数切分文档，并可设置 Overlap，使相邻块保留一部分重复内容。
+
+LlamaIndex 中可以使用 `TokenTextSplitter`：
+
+```Python
+from llama_index.core.node_parser import TokenTextSplitter
+
+splitter = TokenTextSplitter(
+    chunk_size=500,
+    chunk_overlap=50,
+)
+nodes = splitter.get_nodes_from_documents(documents)
+```
+
+例如，将一篇 1500 Tokens 的文档按照 500 Tokens 切分：
+
+```Plain Text
+输入文档：
+[1 ...................................................... 1500 Tokens]
+
+输出：
+Chunk 1：[1-----------500]
+Chunk 2：                [501--------1000]
+Chunk 3：                                  [1001--------1500]
+```
+
+为了避免关键信息恰好落在两个块的边界，可以让相邻块保留部分重复内容：
+
+```Plain Text
+Chunk 1：[--------------------]
+Chunk 2：                [--------------------]
+                         ↑ Overlap
+```
+
+**优点**：实现简单、速度快、块大小稳定，便于控制索引规模和成本，适合作为快速验证 RAG 流程的基线。
+
+**缺点**：可能从句子或段落中间切断，不理解文档结构和语义；Overlap 过大还会导致索引冗余和重复召回。
+
+**适用场景**：文本结构不明显、需要快速建立基线、对切分边界要求不高的场景。
+
+
+###### 16.5.3.2.2 递归分块
+
+**递归分块**按照一组从粗到细的分隔符逐级切分。它通常先尝试段落，再尝试句子、标点、空格，最后使用字符或 Token 强制切分作为兜底。
+
+```Plain Text
+段落 → 换行 → 句子 → 标点 → 空格 → 字符或 Token
+```
+
+LlamaIndex 中可以使用 `SentenceSplitter`：
+
+```Python
+from llama_index.core.node_parser import SentenceSplitter
+
+splitter = SentenceSplitter(
+    chunk_size=500,
+    chunk_overlap=50,
+)
+nodes = splitter.get_nodes_from_documents(documents)
+```
+
+LangChain 中的对应工具是 `RecursiveCharacterTextSplitter`。两者名称不同，但都具有从自然边界到细粒度边界逐级切分的思想。
+
+**递归分块**的完整过程如下：
+
+1. 先按照段落切分；
+2. 检查每个片段是否超过 `chunk_size`；
+3. 如果某个段落仍然太长，再按照句子切分；
+4. 如果句子仍然太长，再按照标点、空格等更细的边界切分；
+5. 最后使用字符或 Token 强制切分作为兜底；
+6. 将较小片段重新合并成接近目标长度的 Chunk，并保留适量 Overlap。
+
+```Plain Text
+输入：一篇长文档
+        ↓ 按段落切
+  [段落 A] [超长段落 B] [段落 C]
+                  ↓ 按句子继续切
+           [句 1] [句 2] [超长句 3]
+                              ↓ 按标点或字符切
+                         [片段 3.1] [片段 3.2]
+```
+
+递归分块器本身通常不真正识别标题。标题层级需要由前面的文档解析器提取，再作为结构边界或元数据传给分块器。如果输入没有段落换行和正常标点，递归分块仍能运行，但会逐步退化为字符或 Token 级强制切分，只能保证长度不超限，不能保证**语义边界**正确。
+
+**优点**：尽量保留段落和句子的完整性；速度快，不需要调用模型；是普通 RAG 项目中最常用的分块方式。
+
+**缺点**：依赖文本解析和清洗质量；OCR 错误换行可能造成误切；它并不真正理解标题和主题变化，输入没有正常换行或标点时会退化为固定长度切分。
+
+**适用场景**：普通文章、说明书、制度和技术文档，以及已经完成基本清洗的非结构化文本。
+
+![](D:/Github/Scene-problem/agent_leetcode/images_opt/img_041.jpg)
+
+
+###### 16.5.3.2.3 结构化分块
+
+**结构化分块**利用文件本身的组织结构确定边界，而不是只根据长度切分。
+
+- **Markdown**：**按照标题、段落和代码块切分**；
+- **HTML**：按照 `h1`～`h6`、`p`、`li`、`table` 等标签切分；
+- **DOCX**：按照 Heading 样式、段落、列表和表格切分；
+- **代码**：按照文件、类、函数和方法切分；
+- **PDF/PPT**：按照标题、正文、列表、表格、图片和页面区域切分。
+
+LlamaIndex 提供了 `MarkdownNodeParser`、`HTMLNodeParser`、`JSONNodeParser`、`CodeSplitter` 等解析器。例如：
+
+```Python
+from llama_index.core.node_parser import MarkdownNodeParser
+
+parser = MarkdownNodeParser()
+nodes = parser.get_nodes_from_documents(documents)
+```
+
+**结构化分块**的典型处理流程如下：
+
+```Plain Text
+原始文件
+→ 文档解析或版面分析
+→ 识别标题、正文、表格、列表和代码等结构单元
+→ 在超长结构单元内部继续递归切分
+→ 生成 Chunks，并保存标题路径、页码和来源等元数据
+```
+
+Reader 负责读取和提取文件内容，NodeParser 负责形成最终用于索引的节点。对于复杂 PDF，仅提取纯文本通常无法保留正确阅读顺序，需要结合字号、坐标、页面区域和版面模型识别标题、分栏、表格与图片；扫描 PDF 还需要先进行 OCR。
+
+如果一个章节仍然过长，可以先按标题进行结构化分块，再在章节内部使用**递归分块**。因此，结构化分块和**递归分块**经常组合使用。
+
+**优点**：能够保留标题与正文、表头与数据、函数与代码之间的关系，结果更容易引用和追溯。
+
+**缺点**：不同文件需要不同解析器；复杂 PDF 需要根据字号、坐标和版面推断结构；解析错误会直接影响后续分块质量。
+
+**适用场景**：Markdown、HTML、Word、代码，以及包含标题、列表和表格的 PDF/PPT。
+
+
+###### 16.5.3.2.4 语义分块
+
+**语义分块**根据主题或语义变化确定边界。常见实现会先切句，再使用嵌入模型计算相邻句子或**句子窗口**的语义距离，在语义突变的位置设置断点，并将连续且语义相近的句子合并成一个 Chunk。
+
+LlamaIndex 中可以使用 `SemanticSplitterNodeParser`：
+
+```Python
+from llama_index.core.node_parser import SemanticSplitterNodeParser
+
+splitter = SemanticSplitterNodeParser(
+    embed_model=embed_model,
+    breakpoint_percentile_threshold=85,
+)
+nodes = splitter.get_nodes_from_documents(documents)
+```
+
+阈值需要根据真实语料调整，数值越低通常越容易产生更多分块。**语义分块**仍需设置最大 Token 上限，避免产生过长的 Chunk。
+
+基于 Embedding 的语义分块通常包含以下步骤：
+
+1. 先把文档切成句子；
+2. 为单个句子或**句子窗口**生成向量；
+3. 计算相邻句子的语义相似度或距离；
+4. 在语义差异明显的位置设置断点；
+5. 将语义相近的连续句子合并为一个 Chunk；
+6. 使用最大 Token 数限制 Chunk 上限。
+
+```Plain Text
+句 1 ──相似── 句 2 ──相似── 句 3 ║语义突变║ 句 4 ──相似── 句 5
+
+输出：
+Chunk 1：句 1 + 句 2 + 句 3
+Chunk 2：句 4 + 句 5
+```
+
+语义分块比**递归分块**慢，是因为**递归分块**主要执行字符串操作，而语义分块需要对大量句子运行嵌入模型、计算相似度，有些算法还需要进行多轮合并。
+
+**优点**：块内主题更一致，不完全依赖换行和格式，能够缓解语义在错误位置被切断的问题。
+
+**缺点**：需要对大量句子计算 Embedding 和相似度，建库速度较慢；阈值需要实验调整；块大小不固定。
+
+**适用场景**：会议纪要、访谈、长篇报告、OCR 后段落结构不可靠的文本，以及一个自然段中经常包含多个主题的内容。
+
+
+###### 16.5.3.2.5 命题分块
+
+**命题分块**使用大语言模型把原文转换成多条能够独立理解的事实或观点。它可能拆开复合句、补全省略主语、消解代词指代，并进行少量改写，因此不仅是文本切割，也属于内容转换和索引增强。
+
+
+LlamaIndex 没有像 `SentenceSplitter` 一样通用的内置**命题分块**器。因此，命题提取逻辑需要开发者自己实现，LlamaIndex 主要负责承载节点和建立索引。通常需要自行组合以下流程：
+
+```Plain Text
+使用 SentenceSplitter 粗切原文
+→ 调用 LLM 提取命题列表
+→ 每条命题创建一个 TextNode
+→ 在 metadata 中保存 parent_id、页码和来源
+→ 使用 VectorStoreIndex 建立索引
+```
+
+下面是命题分块的流程伪代码。它用于说明职责划分，并不是可以直接运行的 LlamaIndex 内置 API：
+
+```Python
+parent_chunks = sentence_splitter.get_nodes_from_documents(documents)
+
+proposition_nodes = []
+
+for parent_chunk in parent_chunks:
+# 核心步骤需要自己实现：调用 LLM，把原始段落拆成命题列表
+    propositions = extract_propositions_with_llm(parent_chunk.text)
+
+    for proposition in propositions:
+        proposition_node = create_llamaindex_node(
+            text=proposition,
+            parent_node=parent_chunk,
+        )
+        proposition_nodes.append(proposition_node)
+
+index = VectorStoreIndex(proposition_nodes)
+```
+
+这里的 `extract_propositions_with_llm()` 和 `create_llamaindex_node()` 都是为了说明流程而写的自定义函数名，不是 LlamaIndex 自带方法。前者负责通过 Prompt 和 LLM 提取命题，后者负责把命题包装为 LlamaIndex 节点。
+
+其中，“把已经提取出的命题包装成节点”可以使用 LlamaIndex 自带的 `TextNode`：
+
+```Python
+from llama_index.core.schema import TextNode
+
+nodes = [
+    TextNode(
+        text=proposition,
+        metadata={
+            "parent_id": parent_id,
+            "source": source,
+            "page": page,
+        },
+    )
+    for proposition in propositions
+]
+```
+
+这段 `TextNode` 代码本身不负责切分，也不会自动生成命题。它成立的前提是业务代码已经完成以下工作：
+
+1. 调用 LLM 分析原始段落；
+2. 得到 `propositions` 命题列表；
+3. 记录每组命题对应的原始段落 ID；
+4. 再把每条命题保存为 `TextNode`。
+
+`text` 和 `metadata` 是 `TextNode` 提供的字段；`parent_id`、`source` 和 `page` 是项目自定义的 metadata 键，并不是 LlamaIndex 自动生成的属性。如果需要使用 LlamaIndex 原生的父子节点关系，也可以通过节点的 `relationships` 字段保存父节点关系。
+
+
+例如，原文为：
+
+```Plain Text
+张三于 2024 年加入公司，并担任技术负责人。
+他此前在 A 公司工作了五年。
+```
+
+经过命题转换后可以得到：
+
+```Plain Text
+1. 张三于 2024 年加入当前公司。
+2. 张三担任当前公司的技术负责人。
+3. 张三此前在 A 公司工作了五年。
+```
+
+这里不仅拆开了复合句，还把“他”还原成了“张三”，使每条事实脱离原段落后仍能独立参与检索。
+
+命题文本适合生成向量和参与检索，但不应直接替代原文作为最终事实依据。系统应同时保存命题与原文的映射，回答和引用时通过 `parent_id` 回到原始段落。
+
+推荐同时保存以下信息：
+
+- **命题文本**：用于生成向量和检索；
+- **原始段落**：用于回答、引用和事实核对；
+- **`parent_id`**：连接命题与原始段落；
+- **页码和来源**：用于定位和追溯原文。
+
+检索到命题后，再根据 `parent_id` 找到对应原始段落，并把原文而不是孤立命题交给大模型生成答案。
+
+**优点**：每个检索单元只表达一个事实，粒度精细；能够补全指代，适合事实型问答。
+
+**缺点**：需要调用 LLM，速度慢、成本高；模型可能遗漏、误解或错误改写事实。
+
+**适用场景**：事实密集的企业知识库，以及人物、产品属性、事件和关系检索。
 
 ---
 

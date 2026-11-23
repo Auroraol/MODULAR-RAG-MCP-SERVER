@@ -98,7 +98,7 @@ observability:
 ingestion:
   chunk_size: 1000
   chunk_overlap: 200
-  splitter: "recursive"  # 可选项: recursive, semantic(未实现), fixed_length(未实现)
+  splitter: "recursive"  # 可选项: recursive, fixed_length, markdown, semantic, structure, propositional
   batch_size: 100
   
   # Chunk Refiner 配置（C5）

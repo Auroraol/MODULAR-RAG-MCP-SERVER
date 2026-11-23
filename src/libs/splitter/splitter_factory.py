@@ -20,29 +20,64 @@ def _register_builtin_providers() -> None:
     模块被导入时会自动调用此函数。
     它向工厂注册所有可用的切分器实现。
     """
+
+    # TODO 后续新增策略时请在此处添加
     # 在此导入以避免循环导入，并优雅处理缺失的依赖
     try:
+        # 注册固定长度切分器
+        from src.libs.splitter.fixed_length_splitter import FixedLengthSplitter
+        SplitterFactory.register_provider("fixed_length", FixedLengthSplitter)
+    except ImportError:
+        pass  # FixedLengthSplitter 不可用（缺少 langchain 依赖）
+
+    try:
         from src.libs.splitter.recursive_splitter import RecursiveSplitter
-        # 注册递归字符文本切分器, TODO 后续新增策略时请在此处添加
+        # 注册递归字符文本切分器
         SplitterFactory.register_provider("recursive", RecursiveSplitter)
     except ImportError:
         pass  # RecursiveSplitter 不可用（缺少 langchain 依赖）
+
+    try:
+        # 注册结构化切分器
+        # 按 Markdown 标题
+        from src.libs.splitter.structure_splitter import StructureSplitter
+        SplitterFactory.register_provider("structure", StructureSplitter)
+        # 按 Markdown标题/代码块/段落切分文本
+        from src.libs.splitter.markdown_splitter import MarkdownSplitter
+        SplitterFactory.register_provider("markdown", MarkdownSplitter)
+    except ImportError:
+        pass
+
+    try:
+        # 注册语义切分器
+        from src.libs.splitter.semantic_splitter import SemanticSplitter
+        SplitterFactory.register_provider("semantic", SemanticSplitter)
+    except ImportError:
+        # SemanticSplitter 不可用（缺少 langchain 依赖）
+        pass
+
+    try:
+        # 注册命题切分器（LLM 抽取原子命题）
+        from src.libs.splitter.propositional_splitter import PropositionalSplitter
+        SplitterFactory.register_provider("propositional", PropositionalSplitter)
+    except ImportError:
+        pass
 
 
 class SplitterFactory:
     """用于创建 Splitter provider 实例的工厂。
 
     此工厂从 settings 读取 splitter 配置，并实例化相应的 Splitter 实现。
-    受支持的 provider 将在后续任务（B7.5）中添加。
+    已注册的 provider：recursive、fixed_length、markdown、semantic、structure、propositional。
 
     应用的设计原则：
     - 工厂模式：集中管理对象创建逻辑。
     - 配置驱动：基于 settings.yaml 选择 provider。
     - 快速失败：对未知 provider 抛出明确的错误。
     """
-    
+
     _PROVIDERS: dict[str, type[BaseSplitter]] = {}
-    
+
     @classmethod
     def register_provider(cls, name: str, provider_class: type[BaseSplitter]) -> None:
         """注册新的 Splitter provider 实现。
@@ -59,7 +94,7 @@ class SplitterFactory:
                 f"Provider class {provider_class.__name__} must inherit from BaseSplitter"
             )
         cls._PROVIDERS[name.lower()] = provider_class
-    
+
     @classmethod
     def create(cls, settings: Settings, **override_kwargs: Any) -> BaseSplitter:
         """根据配置创建 Splitter 实例。
@@ -84,7 +119,7 @@ class SplitterFactory:
                 "Missing required configuration: settings.ingestion.splitter. "
                 "Please ensure 'ingestion.splitter' is specified in settings.yaml"
             ) from e
-        
+
         provider_class = cls._PROVIDERS.get(provider_name)
         if provider_class is None:
             available = ", ".join(sorted(cls._PROVIDERS.keys())) if cls._PROVIDERS else "none"
@@ -93,14 +128,14 @@ class SplitterFactory:
                 f"Available providers: {available}. "
                 "Provider implementations will be added in task B7.5."
             )
-        
+
         try:
             return provider_class(settings=settings, **override_kwargs)
         except Exception as e:
             raise RuntimeError(
                 f"Failed to instantiate Splitter provider '{provider_name}': {e}"
             ) from e
-    
+
     @classmethod
     def list_providers(cls) -> list[str]:
         """列出所有已注册的 provider 名称。

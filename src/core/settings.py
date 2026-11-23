@@ -172,7 +172,7 @@ class VisionLLMSettings:
 class IngestionSettings:
     chunk_size: int
     chunk_overlap: int
-    splitter: str
+    splitter: str # 可选项: recursive, fixed_length, markdown, semantic, structure, propositional
     batch_size: int
     chunk_refiner: Optional[Dict[str, Any]] = None  # 动态配置
     metadata_enricher: Optional[Dict[str, Any]] = None  # 动态配置

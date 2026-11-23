@@ -121,7 +121,7 @@ class DocumentChunker:
                 f"Text length: {len(document.text)}"
             )
         
-        # 步骤 2：将文本片段转换为带有增强信息的 Chunk 对象
+        # 步骤 2：将文本切块片段转换为带有增强信息的 Chunk 对象
         chunks: List[Chunk] = []
         for index, text in enumerate(text_fragments):
             chunk_id = self._generate_chunk_id(document.id, index, text)
