@@ -431,7 +431,7 @@ status_text.success(
 
 ### 加载
 
-
+核心:  转换为带图片占位符的标准 Markdown 格式
 
 ### 切块
 

@@ -140,7 +140,7 @@ class IngestionPipeline:
         self.integrity_checker = SQLiteIntegrityChecker(db_path=str(resolve_path("data/db/ingestion_history.db")))
         logger.info("  ✓ FileIntegrityChecker initialized")
         
-        # 阶段 2: 加载器(按扩展名分发: pdf / txt / md / csv / json / docx / pptx / xlsx / html)
+        # 阶段 2: 加载器(按扩展名分发: pdf / txt / md / csv / json / docx / pptx / xlsx / html) 转换为带图片占位符的标准 Markdown 格式
         self.loader = LoaderFactory(
             extract_images=True,
             image_storage_dir=str(resolve_path(f"data/images/{collection}"))
@@ -249,7 +249,7 @@ class IngestionPipeline:
             logger.info("  ✓ File needs processing")
             
             # ─────────────────────────────────────────────────────────────
-            # 阶段 2: 文档加载
+            # 阶段 2: 文档加载(转换为带图片占位符的标准 Markdown 格式)
             # ─────────────────────────────────────────────────────────────
             logger.info("\n📄 Stage 2: Document Loading")
             _notify("load", 2)
@@ -289,6 +289,7 @@ class IngestionPipeline:
             _notify("split", 3)
             
             _t0 = time.monotonic()
+            # 切块 + 填充图片到元数据中
             chunks = self.chunker.split_document(document)
             _elapsed = (time.monotonic() - _t0) * 1000.0
             

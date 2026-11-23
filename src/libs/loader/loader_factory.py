@@ -30,6 +30,14 @@ class LoaderFactory:
             "extract_images": extract_images,
             "image_storage_dir": image_storage_dir,
         }
+        self._office_kwargs = {
+            "extract_images": extract_images,
+            "image_storage_dir": image_storage_dir,
+        }
+        self._text_kwargs = {
+            "extract_images": extract_images,
+            "image_storage_dir": image_storage_dir,
+        }
         self._loaders: Dict[type, BaseLoader] = {}
 
     @staticmethod
@@ -47,9 +55,9 @@ class LoaderFactory:
             loader_cls: type = PdfLoader
             kwargs = self._pdf_kwargs
         elif suffix in TextLoader.SUPPORTED_EXTENSIONS:
-            loader_cls, kwargs = TextLoader, {}
+            loader_cls, kwargs = TextLoader, self._text_kwargs
         elif suffix in OfficeLoader.SUPPORTED_EXTENSIONS:
-            loader_cls, kwargs = OfficeLoader, {}
+            loader_cls, kwargs = OfficeLoader, self._office_kwargs
         else:
             raise ValueError(
                 f"Unsupported file type: {suffix or '(none)'}. "

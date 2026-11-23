@@ -21,6 +21,7 @@ ID 生成、元数据继承和可追溯性。
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import TYPE_CHECKING, List
 
 from src.core.types import Chunk, Document
@@ -175,10 +176,11 @@ class DocumentChunker:
         - chunk_index：顺序位置（从 0 开始）
         - source_ref：父文档 ID 的引用
         - image_refs：此 Chunk 中引用的 Image ID 列表（从占位符中提取）
+        - images / page_num：被引用图片的完整元数据（仅当文档级 images 可匹配时）
 
-        注意：文档级的 'images' 字段被有意从 Chunk 元数据中排除，
-        因为它是冗余的。取而代之的是，根据 Chunk 文本中的
-        [IMAGE: xxx] 占位符填充 Chunk 专属的 'image_refs'。
+        注意：文档级的 'images' 字段不原样继承（那是全文档的图片），
+        而是按 Chunk 文本中的 [IMAGE: xxx] 占位符回填 Chunk 专属的
+        'image_refs' 与 'images'，由 _resolve_images 负责。
 
         参数:
             document: 要继承元数据的源文档
@@ -204,45 +206,41 @@ class DocumentChunker:
             >>> metadata["image_refs"]
             ['img_001']
         """
-        import re
-        
         # 复制所有文档元数据（基本类型使用浅拷贝即可）
         chunk_metadata = document.metadata.copy()
 
-        # 获取文档级图片以便查找
-        doc_images = document.metadata.get("images", [])
-
-        # 移除文档级 'images' 字段 —— 下面将添加 Chunk 专属的 images
+        # 文档级 'images' 字段不直接继承，改为按 Chunk 文本中的占位符回填
         chunk_metadata.pop("images", None)
 
         # 添加 Chunk 专属字段
         chunk_metadata["chunk_index"] = chunk_index
         chunk_metadata["source_ref"] = document.id
 
-        # 通过查找 [IMAGE: xxx] 占位符从 Chunk 文本中提取 image_refs
-        image_refs = []
-        if chunk_text:
-            # 匹配 [IMAGE: image_id] 占位符的模式
-            pattern = r'\[IMAGE:\s*([^\]]+)\]'
-            matches = re.findall(pattern, chunk_text)
-            image_refs = [m.strip() for m in matches]
-
+        image_refs, chunk_images = self._resolve_images(
+            chunk_text, document.metadata.get("images") or []
+        )
         chunk_metadata["image_refs"] = image_refs
-
-        # 为引用的图片构建包含完整元数据的 Chunk 专属 'images' 列表
-        # ImageCaptioner 需要它来访问图片路径以调用 Vision API
-        chunk_images = []
-        if image_refs and doc_images:
-            image_lookup = {img.get("id"): img for img in doc_images}
-            for img_id in image_refs:
-                if img_id in image_lookup:
-                    chunk_images.append(image_lookup[img_id])
-
         if chunk_images:
             chunk_metadata["images"] = chunk_images
-
-        # 尝试从第一个引用的图片确定 page_num
-        if chunk_images:
+            # 尝试从第一个引用的图片确定 page_num
             chunk_metadata["page_num"] = chunk_images[0].get("page")
-        
+
         return chunk_metadata
+
+    @staticmethod
+    def _resolve_images(chunk_text: str, doc_images: List[dict]) -> tuple[List[str], List[dict]]:
+        """从 Chunk 文本解析 [IMAGE: id] 占位符，并回填文档级图片元数据。
+
+        返回:
+            (image_refs, chunk_images) —— 本 Chunk 引用的图片 ID 及对应完整元数据
+        """
+        if not chunk_text:
+            return [], []
+
+        image_refs = [m.strip() for m in re.findall(r'\[IMAGE:\s*([^\]]+)\]', chunk_text)]
+        if not image_refs or not doc_images:
+            return image_refs, []
+
+        lookup = {img.get("id"): img for img in doc_images}
+        chunk_images = [lookup[img_id] for img_id in image_refs if img_id in lookup]
+        return image_refs, chunk_images

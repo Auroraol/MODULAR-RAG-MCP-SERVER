@@ -147,7 +147,7 @@ class ImageCaptioner(BaseTransform):
         if not self.llm:
             return chunks
 
-        # 从所有 Chunk 的元数据构建图像查找表
+        # 从所有 Chunk 的元数据构建图像查找表,images在切块的时候填充过
         image_lookup: Dict[str, dict] = {}
         for chunk in chunks:
             for img_meta in (chunk.metadata or {}).get("images") or []:

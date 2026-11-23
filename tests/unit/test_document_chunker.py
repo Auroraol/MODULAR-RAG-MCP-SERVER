@@ -402,3 +402,31 @@ def test_end_to_end_smoke(chunker, sample_document):
 
         # 类型要求
         assert isinstance(chunk, Chunk)
+
+
+# =============================================================================
+# 测试 9：图片占位符 → Chunk 级图片元数据
+# =============================================================================
+
+def test_images_resolved_from_placeholders(chunker):
+    """引用图片的 Chunk 回填 images / page_num，未引用的 Chunk 不继承。"""
+    doc = Document(
+        id="doc_img",
+        text="Intro with [IMAGE: img_001].\n\nPlain paragraph.",
+        metadata={
+            "source_path": "data/documents/sample.docx",
+            "images": [
+                {"id": "img_001", "path": "data/images/doc_img/img_001.png", "page": 3}
+            ],
+        },
+    )
+
+    chunks = chunker.split_document(doc)
+
+    assert chunks[0].metadata["image_refs"] == ["img_001"]
+    assert chunks[0].metadata["images"][0]["path"] == "data/images/doc_img/img_001.png"
+    assert chunks[0].metadata["page_num"] == 3
+
+    assert chunks[1].metadata["image_refs"] == []
+    assert "images" not in chunks[1].metadata
+    assert "page_num" not in chunks[1].metadata
