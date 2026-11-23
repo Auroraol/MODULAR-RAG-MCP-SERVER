@@ -265,7 +265,8 @@ class MetadataEnricher(BaseTransform):
                     enriched_metadata = rule_metadata
                     enriched_by = "rule"
 
-                # 将增强后的元数据与现有元数据合并
+                # 将增强后的元数据与现有元数据合并, 字典解包合并的写法
+                # 同名key覆盖: chunk.metadata < enriched_metadata < {'enriched_by': enriched_by}
                 final_metadata = {
                     **(chunk.metadata or {}),
                     **enriched_metadata,

@@ -53,6 +53,7 @@ class ChunkRefiner(BaseTransform):
         self.settings = settings
         self._llm = llm
         self._prompt_template: Optional[str] = None
+        # 提示词文件路径的默认值设置
         self._prompt_path = prompt_path or str(resolve_path("config/prompts/chunk_refinement.txt"))
         
         # 确定是否应使用 LLM
@@ -93,6 +94,7 @@ class ChunkRefiner(BaseTransform):
 
         # 若启用 LLM，则并行处理 Chunk
         if self.use_llm and self.llm:
+            # 开 LLM 时瓶颈是有网络 I/O，5 个线程能成倍提速
             return self._transform_parallel(chunks, trace)
         else:
             return self._transform_sequential(chunks, trace)

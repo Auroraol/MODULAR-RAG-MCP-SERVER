@@ -322,12 +322,12 @@ class IngestionPipeline:
             # ─────────────────────────────────────────────────────────────
             logger.info("\n🔄 Stage 4: Transform Pipeline")
             _notify("transform", 4)
-            
-            # 4a: Chunk 精炼
+
             logger.info("  4a. Chunk Refinement...")
             _t0_transform = time.monotonic()
             # 精炼前快照
             _pre_refine_texts = {c.id: c.text for c in chunks}
+            # 4a: Chunk refiner 精炼
             chunks = self.chunk_refiner.transform(chunks, trace)
             refined_by_llm = sum(1 for c in chunks if c.metadata.get("refined_by") == "llm")
             refined_by_rule = sum(1 for c in chunks if c.metadata.get("refined_by") == "rule")

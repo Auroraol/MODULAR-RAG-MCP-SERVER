@@ -150,11 +150,10 @@ class ImageCaptioner(BaseTransform):
         # 从所有 Chunk 的元数据构建图像查找表
         image_lookup: Dict[str, dict] = {}
         for chunk in chunks:
-            if chunk.metadata and "images" in chunk.metadata:
-                for img_meta in chunk.metadata.get("images", []):
-                    img_id = img_meta.get("id")
-                    if img_id and img_id not in image_lookup:
-                        image_lookup[img_id] = img_meta
+            for img_meta in (chunk.metadata or {}).get("images") or []:
+                img_id = img_meta.get("id")
+                if img_id and img_id not in image_lookup:
+                    image_lookup[img_id] = img_meta
         
         logger.info(f"Found {len(image_lookup)} unique images in document")
         
@@ -168,9 +167,10 @@ class ImageCaptioner(BaseTransform):
             referenced_ids = self._find_referenced_image_ids(chunk.text)
             for img_id in referenced_ids:
                 if img_id not in images_to_caption:
-                    img_meta = image_lookup.get(img_id)
-                    if img_meta and img_meta.get("path"):
-                        images_to_caption[img_id] = img_meta.get("path")
+                    img_meta = image_lookup.get(img_id) or {}
+                    path = img_meta.get("path")
+                    if isinstance(path, str) and path:
+                        images_to_caption[img_id] = path
         
         # 为所有唯一图像并行生成描述
         if images_to_caption:
