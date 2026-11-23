@@ -140,7 +140,8 @@ class IngestionPipeline:
         self.integrity_checker = SQLiteIntegrityChecker(db_path=str(resolve_path("data/db/ingestion_history.db")))
         logger.info("  ✓ FileIntegrityChecker initialized")
         
-        # 阶段 2: 加载器(按扩展名分发: pdf / txt / md / csv / json / docx / pptx / xlsx / html) 转换为带图片占位符的标准 Markdown 格式
+        # 阶段 2: 加载器(按扩展名分发: pdf / txt / md / csv / json / docx / pptx / xlsx / html)
+        # 1.转换为带图片占位符的标准 Markdown 格式, 2.保存解析出来的图片到指定的本地目录
         self.loader = LoaderFactory(
             extract_images=True,
             image_storage_dir=str(resolve_path(f"data/images/{collection}"))
