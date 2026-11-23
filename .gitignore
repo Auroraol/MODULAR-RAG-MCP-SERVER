@@ -106,3 +106,4 @@ traces.jsonl
 secrets.yaml
 nonexistent_traces.jsonl/
 /config/settings-dev.yaml
+/config/settings_dev.yaml
