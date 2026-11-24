@@ -43,6 +43,7 @@ class VectorStoreFactory:
         异常:
             ValueError: 当 provider_class 未继承 BaseVectorStore 时。
         """
+        # TODO 后续新增向量数据库时请在此处添加
         if not issubclass(provider_class, BaseVectorStore):
             raise ValueError(
                 f"Provider class {provider_class.__name__} must inherit from BaseVectorStore"

@@ -163,7 +163,7 @@ class IngestionPipeline:
         has_vision = self.image_captioner.llm is not None
         logger.info(f"  ✓ ImageCaptioner initialized (vision_enabled={has_vision})")
         
-        # 阶段 5: 编码器(向量化)
+        # 阶段 5: 编码器(一般使用稠密向量化)
         embedding = EmbeddingFactory.create(settings)
         batch_size = settings.ingestion.batch_size if settings.ingestion else 100
         self.dense_encoder = DenseEncoder(embedding, batch_size=batch_size)
@@ -290,7 +290,7 @@ class IngestionPipeline:
             _notify("split", 3)
             
             _t0 = time.monotonic()
-            # 文本切块 + 填充图片到元数据中
+            # 文本切块 + 填充图片到元数据中 + chunk.id写入格式{doc_id}_{index:04d}_{原文哈希}
             chunks = self.chunker.split_document(document)
             _elapsed = (time.monotonic() - _t0) * 1000.0
             
@@ -329,6 +329,7 @@ class IngestionPipeline:
             _t0_transform = time.monotonic()
             # 精炼前快照
             _pre_refine_texts = {c.id: c.text for c in chunks}
+
             # 4a: Chunk refiner 精炼
             chunks = self.chunk_refiner.transform(chunks, trace)
             refined_by_llm = sum(1 for c in chunks if c.metadata.get("refined_by") == "llm")
@@ -460,12 +461,13 @@ class IngestionPipeline:
             # 6a: 向量写入
             logger.info("  6a. Vector Storage (ChromaDB)...")
             _t0_storage = time.monotonic()
-            vector_ids = self.vector_upserter.upsert(chunks, dense_vectors, trace)
-            logger.info(f"      Stored {len(vector_ids)} vectors")
-
+            # chunk_id格式{source_path哈希}_{index:04d}_{精炼后文本哈希}
+            new_chunk_ids = self.vector_upserter.upsert(chunks, dense_vectors, trace)
+            logger.info(f"      Stored {len(new_chunk_ids)} vectors")
             # 将 BM25 的 chunk_id 与 Chroma 向量 ID 对齐，以便
             # SparseRetriever 在检索后能在向量存储中查到 BM25 命中项。
-            for stat, vid in zip(sparse_stats, vector_ids):
+            # BM25 只存了词项统计（term_frequencies 等），没有正文，必须拿 chunk_id 回 Chroma 取文本/元数据
+            for stat, vid in zip (sparse_stats, new_chunk_ids):
                 stat["chunk_id"] = vid
 
             # 6b: BM25 索引
@@ -479,7 +481,7 @@ class IngestionPipeline:
             logger.info(f"      Index built for {len(sparse_stats)} documents")
             
             # 6c: 在图片存储索引中登记图片
-            # 注意：图片已由 PdfLoader 保存，这里只需为其建立索引
+            # 注意：图片已由 xxxLoader 保存，这里只需为其建立索引
             logger.info("  6c. Image Storage Index...")
             images = document.metadata.get("images", [])
             for img in images:
@@ -495,17 +497,18 @@ class IngestionPipeline:
             logger.info(f"      Indexed {len(images)} images")
             
             stages["storage"] = {
-                "vector_count": len(vector_ids),
+                "vector_count": len(new_chunk_ids),
                 "bm25_docs": len(sparse_stats),
                 "images_indexed": len(images)
             }
             _elapsed_storage = (time.monotonic() - _t0_storage) * 1000.0
+            # 记录存储阶段的详情
             if trace is not None:
                 # 每个 Chunk 的存储映射：chunk_id → vector_id
                 chunk_storage = [
                     {
                         "chunk_id": c.id,
-                        "vector_id": vector_ids[i] if i < len(vector_ids) else "—",
+                        "vector_id": new_chunk_ids[i] if i < len(new_chunk_ids) else "—",
                         "collection": self.collection,
                         "store": "ChromaDB",
                     }
@@ -526,7 +529,7 @@ class IngestionPipeline:
                     "dense_store": {
                         "backend": "ChromaDB",
                         "collection": self.collection,
-                        "count": len(vector_ids),
+                        "count": len(new_chunk_ids),
                         "path": "data/db/chroma/",
                     },
                     "sparse_store": {
@@ -544,14 +547,14 @@ class IngestionPipeline:
                 }, elapsed_ms=_elapsed_storage)
             
             # ─────────────────────────────────────────────────────────────
-            # 标记成功
+            # 文档摄取标记成功
             # ─────────────────────────────────────────────────────────────
             self.integrity_checker.mark_success(file_hash, str(file_path), self.collection)
             
             logger.info("\n" + "=" * 60)
             logger.info("✅ Pipeline completed successfully!")
             logger.info(f"   Chunks: {len(chunks)}")
-            logger.info(f"   Vectors: {len(vector_ids)}")
+            logger.info(f"   Vectors: {len(new_chunk_ids)}")
             logger.info(f"   Images: {len(images)}")
             logger.info("=" * 60)
             
@@ -561,7 +564,7 @@ class IngestionPipeline:
                 doc_id=file_hash,
                 chunk_count=len(chunks),
                 image_count=len(images),
-                vector_ids=vector_ids,
+                vector_ids=new_chunk_ids,
                 stages=stages
             )
             

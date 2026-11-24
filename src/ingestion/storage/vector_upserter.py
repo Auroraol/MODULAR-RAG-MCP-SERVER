@@ -110,6 +110,7 @@ class VectorUpserter:
         records = []
         chunk_ids = []
 
+        # 生成稳定的 chunk ID 并构建记录
         for chunk, vector in zip(chunks, vectors):
             # 生成确定性的 chunk ID
             chunk_id = self._generate_chunk_id(chunk)
@@ -144,6 +145,7 @@ class VectorUpserter:
             chunk: 要为其生成 ID 的 Chunk 对象。
 
         返回:
+            格式: {source_hash}_{index:04d}_{content_hash}
             稳定的 chunk ID 字符串。
 
         异常:

@@ -1577,18 +1577,6 @@ ollama run --verbose qwen3-embedding:0.6b "这是一段需要被向量化的测�
 
 ![image-20261121232540327](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20261121232540327.png)
 
-## 向量数据库
-
-使用chroma 数据库
-
-
-
-
-
-```
-
-```
-
 
 
 
@@ -1648,3 +1636,4 @@ updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 )
 ```
 
+## chroma 向量数据库

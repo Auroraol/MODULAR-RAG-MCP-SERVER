@@ -81,6 +81,28 @@ False
 set()
 ```
 
+X if C else Y
+
+```
+这是 Python 的条件表达式，语法固定是：
+X if C else Y
+读的顺序：先中间的条件，再真分支，最后假分支。
+
+new_chunk_ids[i] if i < len(new_chunk_ids) else "—"
+
+1. 判断 i < len(new_chunk_ids)（越界检查）
+2. 成立 → 取 new_chunk_ids[i]
+3. 不成立 → 取 "—"
+
+等价的 if 写法：
+
+if i < len(new_chunk_ids):
+vector_id = new_chunk_ids[i]
+else:
+vector_id = "—"
+
+```
+
 **布尔运算符**
 
 | 运算符 | 含义             | 短路行为             |
@@ -110,3 +132,44 @@ if not img_id or img_id in image_lookup:
 if (img_id and img_id not in image_lookup) or force:
     ...
 ```
+
+
+
+
+
+# 元组
+
+```python
+1. 数据形态决定：平行数组需要"配对"
+
+sparse_stats: [stat0, stat1, stat2]     # 第 i 个 Chunk 的词项统计
+chunk_ids:    [vid0,  vid1,  vid2]      # 第 i 个 Chunk 的向量 ID
+
+含义上是"每个 Chunk 有两个属性"。Python 没有内置的 zip-projection，最小做法就是把 (stat_i, vid_i) 组成一条记录 —— 元组就是那条记录：
+
+list(zip(a, b))  # [(stat0, vid0), (stat1, vid1), ...]
+
+2. 元组的语义恰好匹配
+
+- 定长：每对固定 2 个元素，不会多也不会少
+- 异质、有角色：一个是 dict，一个是 str，位置有意义
+- 不可变：这一对本身不该被改，改的是 dict 里的字段
+
+这三条正是"用元组而不是列表"的判断标准。如果要存 10 个动态数量的同类元素，才是 list；如果要有名字的字段，才是 dataclass/dict。
+
+3. 相比索引写法，元组解包更不容易错
+
+# 索引写法：4 处下标准确性，改错一处就静默出错
+for i in range(len(sparse_stats)):
+    sparse_stats[i]["chunk_id"] = chunk_ids[i]
+
+# 元组解包：没有下标，没有 len()，角色在循环头就写清楚
+for stat, vid in zip(sparse_stats, chunk_ids):
+    stat["chunk_id"] = vid
+
+zip 还顺带带来两点：
+
+- 惰性：不生成中间列表，逐条产出
+- 通用：两个参数可以是任何可迭代物（生成器、dict 的 .items()、数据库游标），不用能 len() 的列表
+```
+

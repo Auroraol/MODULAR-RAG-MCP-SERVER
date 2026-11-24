@@ -141,7 +141,9 @@ class BatchProcessor:
         batch_count = len(batches)
 
         # 处理所有批次
+        # 稠密编码(向量化)
         dense_vectors: List[List[float]] = []
+        # 稀疏编码(编码为BM25)
         sparse_stats: List[Dict[str, Any]] = []
         successful_chunks = 0
         failed_chunks = 0
