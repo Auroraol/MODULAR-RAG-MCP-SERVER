@@ -464,16 +464,17 @@ class IngestionPipeline:
             # chunk_id格式{source_path哈希}_{index:04d}_{精炼后文本哈希}
             new_chunk_ids = self.vector_upserter.upsert(chunks, dense_vectors, trace)
             logger.info(f"      Stored {len(new_chunk_ids)} vectors")
+
+            # 6b: BM25 索引
+            # BM25索引存储 没有数据库，就是一个 JSON 文件, "增量"是 读旧 → 合并 → 全量重算 → 整个文件重写。
             # 将 BM25 的 chunk_id 与 Chroma 向量 ID 对齐，以便
             # SparseRetriever 在检索后能在向量存储中查到 BM25 命中项。
             # BM25 只存了词项统计（term_frequencies 等），没有正文，必须拿 chunk_id 回 Chroma 取文本/元数据
             for stat, vid in zip (sparse_stats, new_chunk_ids):
                 stat["chunk_id"] = vid
-
-            # 6b: BM25 索引
             logger.info("  6b. BM25 Index...")
             self.bm25_indexer.add_documents(
-                sparse_stats,
+                sparse_stats,  # BM25编码
                 collection=self.collection,
                 doc_id=document.id,
                 trace=trace,

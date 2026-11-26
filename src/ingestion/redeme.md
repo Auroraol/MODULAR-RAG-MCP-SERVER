@@ -3,6 +3,8 @@
   这是最值得精读的单个文件。IngestionPipeline.run() 是 6 阶段串行编排：
 
   # pipeline.py:196
+/ˈpaɪplaɪn/
+
   def run(self, file_path, trace=None, on_progress=None) -> PipelineResult:
 
   ┌───────────────┬────────┬─────────────────────────────┬────────────────────────────────────────┐

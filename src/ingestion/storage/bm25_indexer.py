@@ -329,11 +329,12 @@ class BM25Indexer:
         """
         if not term_stats:
             return
-
+        # 检查字段是否有效 chunk_id/term_frequencies/doc_length
         self._validate_term_stats(term_stats)
 
         # 加载现有索引（若不存在则忽略——将从头开始）
         if not self._index:
+            # 读旧索引 data/db/bm25/{collection}/{collection}_bm25.json
             self.load(collection)
 
         # 移除该文档的过期倒排记录（重复摄入场景）
@@ -341,7 +342,23 @@ class BM25Indexer:
             self.remove_document(doc_id, collection)
 
         # 从当前索引的倒排记录中重建已有的 term_stats
+        # chunk_id → {term_frequencies, doc_length}
         existing_stats: Dict[str, Dict[str, Any]] = {}  # chunk_id -> 统计信息
+
+        ####
+        # 假设倒排索引是：
+        #
+        # "苹果": postings = [{chunk_id: 1, tf: 2, doc_length: 50},
+        #                     {chunk_id: 3, tf: 1, doc_length: 80}]
+        # "手机": postings = [{chunk_id: 1, tf: 3, doc_length: 50}]
+        # 执行完这段代码后，existing_stats
+        # 变成：
+        #
+        # {
+        #     1: {"chunk_id": 1, "term_frequencies": {"苹果": 2, "手机": 3}, "doc_length": 50},
+        #     3: {"chunk_id": 3, "term_frequencies": {"苹果": 1}, "doc_length": 80},
+        # }
+        ###
         for term, term_data in self._index.items():
             for posting in term_data["postings"]:
                 cid = posting["chunk_id"]

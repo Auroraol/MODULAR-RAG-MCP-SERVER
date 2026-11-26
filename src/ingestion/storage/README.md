@@ -69,6 +69,62 @@ flowchart TD
     M --> TR
 ```
 
+## 落盘细节（阶段 6 调用链）
+
+`pipeline.py:467-498` 三段代码里，`zip` 循环不写任何库，真正落盘的是 6b、6c。
+
+### ID 对齐：只改内存
+
+`sparse_stats` 是 `SparseEncoder` 产出的 `list[dict]`，`stat["chunk_id"] = vid` 是就地改字典字段，没有 I/O。改写后的列表原样交给 `add_documents`。
+
+### 6b：BM25 → JSON 文件整份重写
+
+```
+add_documents(sparse_stats, collection, document.id)      bm25_indexer.py:310
+├─ _validate_term_stats                                    # 要求 chunk_id / term_frequencies / doc_length
+├─ if not self._index: self.load(collection)               # 读旧文件 {index_dir}/{collection}_bm25.json
+├─ if doc_id and self._index: self.remove_document(doc_id) # 重复摄入去旧倒排（前缀匹配，见已知问题 1）
+├─ 扫描旧 postings 反向还原 existing_stats                  # chunk_id → {term_frequencies, doc_length}
+├─ combined = existing_stats + sparse_stats
+└─ build(combined, collection)                             bm25_indexer.py:100
+   ├─ N = chunk 数；avg_doc_length = 总词数 / N
+   ├─ DF = 每个词项出现在多少个 chunk
+   ├─ IDF = ln((N - df + 0.5) / (df + 0.5))
+   ├─ 倒排表 term → {idf, df, postings: [{chunk_id, tf, doc_length}]}
+   └─ _save(collection)                                    bm25_indexer.py:515
+      ├─ mkdir -p data/db/bm25/{collection}/
+      ├─ json.dump → xxx_bm25.tmp（ensure_ascii=False）
+      └─ tmp.replace(正式文件)                              # 原子替换
+```
+
+- BM25 没有数据库，「增量」= 读旧 → 合并 → 全量重算 → 整个文件重写。
+- 落盘的 `chunk_id` 是 `new_chunk_ids`（`sha256(source_path)[:8]_...`），检索时靠它回 Chroma 取正文。
+- `doc_id=document.id` 传的是 `doc_{文件哈希}`，与倒排前缀不匹配，`remove_document` 实际删不掉 —— 见已知问题 1。
+
+### 6c：图片 → SQLite 一行，文件早就在磁盘上
+
+图片文件不是这里写的：Loader（pdf/office/text）在阶段 1 已存到 `data/images/{collection}/{doc_hash}/{image_id}.{ext}`，路径记在 `document.metadata["images"]`。这里只建索引：
+
+```
+if img_path.exists():                       # 文件缺失就跳过，不报错
+    register_image(...)                     image_storage.py:230
+    ├─ path.exists() 校验
+    ├─ stored_path = path.resolve()         # 存绝对路径
+    └─ INSERT OR REPLACE INTO image_index
+       (image_id, file_path, collection, doc_hash, page_num, created_at)
+       → commit → close                     # 每次操作开独立连接
+```
+
+DB 文件是 `data/db/image_index.db`（WAL 模式），`image_id` 主键，重复登记覆盖。
+
+### 三处写入对照
+
+| 步骤 | 后端 | 写入动作 | 幂等性 |
+|---|---|---|---|
+| 6a 向量 | ChromaDB | upsert 向量 + metadata | 稳定 ID 覆盖 |
+| 6b BM25 | JSON 文件 | 整份读-合并-原子重写 | 依赖 `remove_document`（见已知问题 1） |
+| 6c 图片 | SQLite | `INSERT OR REPLACE` 一行 | `image_id` 主键覆盖 |
+
 ## VectorUpserter
 
 代码：`vector_upserter.py`（205 行）
