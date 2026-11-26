@@ -27,6 +27,11 @@ def _page_data_browser() -> None:
     render()
 
 
+def _page_query_search() -> None:
+    from src.observability.dashboard.pages.query_search import render
+    render()
+
+
 def _page_ingestion_manager() -> None:
     from src.observability.dashboard.pages.ingestion_manager import render
     render()
@@ -54,6 +59,7 @@ def build_pages() -> list:
     return [
         st.Page(_page_overview, title=tr("nav.overview"), icon="📊", default=True),
         st.Page(_page_data_browser, title=tr("nav.data_browser"), icon="🔍"),
+        st.Page(_page_query_search, title=tr("nav.query_search"), icon="💬"),
         st.Page(_page_ingestion_manager, title=tr("nav.ingestion_manager"), icon="📥"),
         st.Page(_page_ingestion_traces, title=tr("nav.ingestion_traces"), icon="🔬"),
         st.Page(_page_query_traces, title=tr("nav.query_traces"), icon="🔎"),

@@ -1540,7 +1540,7 @@ Starting Dashboard: C:\Users\jindao\Documents\GitHub\MODULAR-RAG-MCP-SERVER\.ven
 
 - 
 
-# 中间件选择
+# 模型选择
 
 ## LLM
 
@@ -1596,6 +1596,61 @@ ollama run --verbose qwen3-embedding:0.6b "这是一段需要被向量化的测�
 
 
 
+```
+scripts/query.py --query "..." --collection xxx [--verbose] [--no-rerank] —— 不走 MCP，自己组装 QueryProcessor + Dense/SparseRetriever + HybridSearch 直接查，--verbose 会打印
+dense/sparse/fusion/rerank 各阶段结果，排查检索问题时用它最方便。
+```
+
+
+
+# MCP
+
+```mermaid
+ flowchart TD
+      A["MCP 客户端<br/>Claude Code / Cursor"] -- "tools/call: query_knowledge_hub" --> B["main.py 或 python -m src.mcp_server.server<br/>stdio / http 传输"]
+      B --> C["protocol_handler.handle_call_tool<br/>按工具名分发"]
+      C --> D["query_knowledge_hub_handler<br/>query_knowledge_hub.py:446"]
+      D --> E["QueryKnowledgeHubTool.execute<br/>query_knowledge_hub.py:218"]
+      E --> F["HybridSearch.search<br/>hybrid_search.py:203"]
+      F --> G1["DenseRetriever.retrieve<br/>Embedding API → Chroma.query"]
+      F --> G2["SparseRetriever.retrieve<br/>BM25.query → Chroma.get_by_ids"]
+      G1 --> H["RRFFusion.fuse<br/>倒数排名融合"]
+      G2 --> H
+      H --> I["CoreReranker.rerank<br/>可选，失败则保持原序"]
+      I --> J["ResponseBuilder.build<br/>文本 + 引用 + 图片块"]
+```
+
+src/mcp_server/tools/query_knowledge_hub.py
+
+# 在线
+
+```
+1. MCP 服务入口（主入口）
+
+- 启动：python main.py（默认 stdio）或 python main.py --transport http（main.py:24-44）
+- 真正注册工具的地方：protocol_handler.py:193 _register_default_tools() → query_knowledge_hub.register_tool(protocol_handler)（query_knowledge_hub.py:509）
+- 客户端调 query_knowledge_hub 时进 query_knowledge_hub_handler（:446），拿到的是模块级单例 get_tool_instance()
+
+execute() 里做三件事：按 collection 懒初始化组件（:265）、_perform_search（:273）、可选 rerank（:279），然后用 ResponseBuilder 包成带引用的 MCP 响应。
+
+2. 核心引擎入口（不管从哪进来都走这里）
+
+src/core/query_engine/hybrid_search.py:203 的 HybridSearch.search()：
+
+1. QueryProcessor.process → 关键词 + 过滤条件
+2. 并行跑 DenseRetriever（语义）和 SparseRetriever（BM25）
+3. RRFFusion.fuse 融合（rrf_k 默认 60）
+4. 元数据后置过滤 → 截断 top_k
+5. 返回 List[RetrievalResult]
+
+单路失败时降级为另一路；两路全挂抛 RuntimeError（:264-269）。
+
+3. 命令行调试入口
+
+scripts/query.py --query "..." --collection xxx [--verbose] [--no-rerank] —— 不走 MCP，自己组装 QueryProcessor + Dense/SparseRetriever + HybridSearch 直接查，--verbose 会打印
+dense/sparse/fusion/rerank 各阶段结果，排查检索问题时用它最方便。
+```
+
 # 数据库
 
 ## SQLite 
@@ -1636,6 +1691,74 @@ updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 )
 ```
 
+### image_index表(用于图像存储)
+
+data/db/image_index.db
+
+```mysql
+# 建表：图片索引表，记录每张图片的元数据
+# - image_id：主键，图片唯一标识
+# - file_path：图片文件路径，非空
+# - collection：所属集合（用于分组/分类）
+# - doc_hash：源文档哈希，用于关联来源文档
+# - page_num：图片在源文档中的页码
+# - created_at：记录创建时间，非空
+conn.execute("""
+    CREATE TABLE IF NOT EXISTS image_index (
+        image_id TEXT PRIMARY KEY,
+        file_path TEXT NOT NULL,
+        collection TEXT,
+        doc_hash TEXT,
+        page_num INTEGER,
+        created_at TEXT NOT NULL
+    )
+""")
+
+# 按 collection 建索引，加速按集合筛选图片的查询
+conn.execute("""
+    CREATE INDEX IF NOT EXISTS idx_collection
+    ON image_index(collection)
+""")
+
+# 按 doc_hash 建索引，加速按源文档哈希查找其下所有图片
+conn.execute("""
+    CREATE INDEX IF NOT EXISTS idx_doc_hash
+    ON image_index(doc_hash)
+""")
+```
+
 
 
 ## chroma 向量数据库
+
+表结构
+
+```sql
+{
+    'id': 'doc1_chunk0',
+    'vector': [0.1, 0.2, ..., 0.5],
+    'metadata': {'source': 'doc1.pdf', 'page': 1}
+}
+```
+
+知识点chroma是无模式“schema-less”
+
+```
+关系库（比如 image_index） —— 先声明，后插入：
+   
+CREATE TABLE image_index (               -- schema 在这里
+    image_id TEXT PRIMARY KEY,
+    file_path TEXT NOT NULL,
+    page_num INTEGER
+);
+INSERT INTO image_index (image_id, file_path, page_num) VALUES (...);  -- 必须对得上
+
+Chroma —— 没有任何声明语句，upsert() 的四个参数就是全部"字段"：
+
+collection.upsert(
+    ids       = ["a1b2c3d4_0000_e5f6g7h8"],   # 主键
+    embeddings= [[0.12, -0.33, ...]],          # 向量
+    metadatas = [{"source_path": "x.pdf", "chunk_index": 0, "text": "..."}],  # 任意键值
+    documents = ["正文内容..."],                # 文本
+)
+```

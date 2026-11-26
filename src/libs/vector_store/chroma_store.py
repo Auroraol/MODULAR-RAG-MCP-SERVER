@@ -126,7 +126,7 @@ class ChromaStore(BaseVectorStore):
         try:
             self.collection = self.client.get_or_create_collection(
                 name=self.collection_name,
-                metadata={"hnsw:space": "cosine"}  # 使用余弦相似度
+                metadata={"hnsw:space": "cosine"}  # 使用余弦相似度 只在 collection 首次创建时生效。
             )
         except Exception as e:
             raise RuntimeError(

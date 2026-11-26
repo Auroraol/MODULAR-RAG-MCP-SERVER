@@ -174,7 +174,89 @@ class TestDashboardSmoke:
         assert _has_any(_collect_text(at), *markers)
 
     # ------------------------------------------------------------------
-    # 3. Ingestion Manager 页面
+    # 3. Query Search 页面
+    # ------------------------------------------------------------------
+
+    @pytest.mark.e2e
+    @pytest.mark.parametrize(
+        ("language", "markers"),
+        [("en", ("query", "search")), ("zh", ("在线检索",))],
+    )
+    def test_query_search_page_renders(self, language: str, markers: tuple) -> None:
+        """Query Search 页面能够加载（未点击检索时不应访问后端）。"""
+        mock_svc = MagicMock()
+        mock_svc.list_collections.return_value = ["default"]
+
+        def page_script():
+            from src.observability.dashboard.pages.query_search import render
+            render()
+
+        at = _run_page(
+            page_script,
+            language,
+            **{"src.observability.dashboard.pages.query_search.DataService": mock_svc},
+        )
+
+        assert not at.exception, (
+            f"Query Search page raised an exception: {at.exception}"
+        )
+        assert _has_any(_collect_text(at), *markers)
+
+    @pytest.mark.e2e
+    @pytest.mark.parametrize(
+        ("language", "content", "markers"),
+        [
+            ("en", "## Results\n\nFound 1 relevant chunk.", ("results",)),
+            ("zh", "## 结果\n\n找到 1 条相关内容。", ("结果",)),
+        ],
+    )
+    def test_query_search_renders_response(
+        self, language: str, content: str, markers: tuple
+    ) -> None:
+        """点击检索后展示 _run_query 返回的 Markdown 内容。"""
+        from contextlib import ExitStack
+
+        from streamlit.testing.v1 import AppTest
+
+        from src.core.response.response_builder import MCPToolResponse
+
+        mock_svc = MagicMock()
+        mock_svc.list_collections.return_value = ["default"]
+        fake_response = MCPToolResponse(
+            content=content, metadata={"result_count": 1}
+        )
+
+        def page_script():
+            from src.observability.dashboard.pages.query_search import render
+            render()
+
+        at = AppTest.from_function(page_script, default_timeout=10)
+        at.session_state["lang"] = language
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "src.observability.dashboard.pages.query_search.DataService",
+                    return_value=mock_svc,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "src.observability.dashboard.pages.query_search._run_query",
+                    return_value=fake_response,
+                )
+            )
+            at.run()
+            at.text_input[0].input("hello")
+            at.button[0].click()
+            at.run()
+
+        assert not at.exception, (
+            f"Query Search page raised an exception: {at.exception}"
+        )
+        assert _has_any(_collect_text(at), *markers)
+
+    # ------------------------------------------------------------------
+    # 4. Ingestion Manager 页面
     # ------------------------------------------------------------------
 
     @pytest.mark.e2e
@@ -199,7 +281,7 @@ class TestDashboardSmoke:
         )
 
     # ------------------------------------------------------------------
-    # 4. Ingestion Traces 页面
+    # 5. Ingestion Traces 页面
     # ------------------------------------------------------------------
 
     @pytest.mark.e2e
@@ -228,7 +310,7 @@ class TestDashboardSmoke:
         assert _has_any(_collect_text(at), *markers)
 
     # ------------------------------------------------------------------
-    # 5. Query Traces 页面
+    # 6. Query Traces 页面
     # ------------------------------------------------------------------
 
     @pytest.mark.e2e
@@ -257,7 +339,7 @@ class TestDashboardSmoke:
         assert _has_any(_collect_text(at), *markers)
 
     # ------------------------------------------------------------------
-    # 6. Evaluation Panel 页面
+    # 7. Evaluation Panel 页面
     # ------------------------------------------------------------------
 
     @pytest.mark.e2e
@@ -280,7 +362,7 @@ class TestDashboardSmoke:
         assert _has_any(_collect_text(at), *markers)
 
     # ------------------------------------------------------------------
-    # 7. 导航与语言切换
+    # 8. 导航与语言切换
     # ------------------------------------------------------------------
 
     @pytest.mark.e2e
