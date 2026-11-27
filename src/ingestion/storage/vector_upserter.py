@@ -1,4 +1,4 @@
-"""用于将 Chunk 写入向量数据库的 Vector 写入器。
+"""用于将 Chunk 写入向量数据库的 Vector 向量 写入器。
 
 该模块实现 VectorUpserter 组件，负责：
 - 根据内容生成确定性的 chunk ID

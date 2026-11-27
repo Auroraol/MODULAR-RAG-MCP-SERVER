@@ -429,9 +429,125 @@ status_text.success(
 )
 ```
 
+### 存储
+
+前置节点生成
+
+```json
+{
+      "id": "101872d7_0000_93c6e5d0",
+      "embedding": [0.013, -0.221, ...],        # 1536 维 → HNSW *.bin
+      "document": "...正文...",                  # metadata["text"] 或 id
+      "metadata": {
+          "source_path": "D:\\docs\\报告.pdf",   # Loader 写入
+          "doc_type": "pdf",
+          "chunk_index": 0,
+          "title": "报告标题",
+          "tags": "api,sdk",                     # list → 逗号字符串
+          "images": "{'id': '101872d7_1_1', ...}",  # dict/list → str()
+          "summary": "...",
+          "text": "...正文...",                  # VectorUpserter 补的
+          "chunk_id": "101872d7_0000_93c6e5d0"  # VectorUpserter 补的
+      }
+  }
+```
+
+```
+三库关系
+Chroma  id  ──────────── chunk_id ────────────  BM25 postings
+   │
+   └─ metadata.images[].id ── image_id ── image_index.db ── 磁盘文件
+```
+
+#### ChromaStore存储格式
+
+注意: 在ChromaStore.upsert函数中会把metadata处理成单独的字段最终入库的数据是：
+
+```json
+位置：data/db/chroma/（chroma.sqlite3 + HNSW 段 *.bin）
+
+{  
+    "chunk_index": 0, "page_num": 1,
+    "source_path": "C:\\Users\\...\\tmpa7am_6px.pdf",
+    "doc_type": "pdf",
+    "doc_hash": "101872d7acb1754c...",
+    "source_ref": "doc_101872d7acb1754c",
+    "title": "Image Placeholder References ...",
+    "summary": "The text chunk consists solely of ...",
+    "tags": "image references,placeholders,...",
+    "images": "{'id': '101872d7_1_1', 'path': ...},{'id': '101872d7_2_1', ...}",
+    "image_refs": "101872d7_1_1,101872d7_2_1",
+    "enriched_by": "llm", "refined_by": "llm",
+    "text": "[IMAGE: 101872d7_1_1]\n\n[IMAGE: 101872d7_2_1]",
+    "chunk_id": "42ee3668_0000_93c6e5d0"
+  }
+```
+
+####  BM25Indexer存储格式
+
+```json
+位置：data/db/bm25/{collection}/{collection}_bm25.json
+
+  {  
+    "metadata": {
+      "num_docs": 42,
+      "avg_doc_length": 133.31,
+      "total_terms": 1502,
+      "collection": "default"
+    },
+    "index": {
+      "image": {
+        "idf": 2.424,
+        "df": 3,
+        "postings": [
+          { "chunk_id": "101872d7_0000_93c6e5d0", "tf": 2, "doc_length": 70 },
+          { "chunk_id": "42ee3668_0000_93c6e5d0", "tf": 2, "doc_length": 4 }
+        ]
+      },
+      "101872d7_1_1": {
+        "idf": 3.320,
+        "df": 1,
+        "postings": [
+          { "chunk_id": "101872d7_0000_93c6e5d0", "tf": 1, "doc_length": 70 }
+        ]
+      }
+    }
+  }
+```
+
+#### ImageStorage存储格式 
+
+SQLite + 文件系统
+
+```sql
+数据库：data/db/image_index.db，WAL 模式，全局单库：
+
+image_index (
+    image_id   TEXT PRIMARY KEY,      -- 101872d7_10_1
+    file_path  TEXT NOT NULL,         -- 存绝对路径
+    collection TEXT,                  -- default
+    doc_hash   TEXT,                  -- 101872d7acb1754c...
+    page_num   INTEGER,               -- 10
+    created_at TEXT NOT NULL
+)
+-- 索引：idx_collection(collection), idx_doc_hash(doc_hash)
+
+  image_id     | file_path   | collection | doc_hash  | page_num | created_at
+  101872d7_1_1  | D:\...\data\images\default\101872d7acb1754c...dcf01\101872d7_1_1.jpeg  | default    | 101872d7acb1754c... | 1        | 2026-11-21T15:08:38.522952+00:00
+
+  对应磁盘：data/images/{collection}/{doc_hash}/{image_id}.{ext}
+  data/images/default/101872d7acb1754c...dcf01/101872d7_1_1.jpeg
+```
+
 ### 加载
 
 核心:   1.转换为带图片占位符的标准 Markdown 格式, 2.保存解析出来的图片到指定的本地目录
+
+```
+
+```
+
+
 
 ### 切块
 
@@ -1651,6 +1767,10 @@ scripts/query.py --query "..." --collection xxx [--verbose] [--no-rerank] ——
 dense/sparse/fusion/rerank 各阶段结果，排查检索问题时用它最方便。
 ```
 
+ HybridSearch /ˈhaɪbrɪd/ 混合搜索
+
+
+
 # 数据库
 
 ## SQLite 
@@ -1729,36 +1849,45 @@ conn.execute("""
 
 
 
-## chroma 向量数据库
+# 向量数据库
 
-表结构
+## chroma 
+
+建表
+
+Chroma 不暴露 SQL DDL，get_or_create_collection 就是建表语句，等价于：
 
 ```sql
-{
-    'id': 'doc1_chunk0',
-    'vector': [0.1, 0.2, ..., 0.5],
-    'metadata': {'source': 'doc1.pdf', 'page': 1}
-}
+CREATE TABLE "default" (
+    id        TEXT PRIMARY KEY,
+    embedding VECTOR(1536),       -- 维度不在 DDL 里声明，由 embedding 模型决定
+    document  TEXT,
+    -- 以下都是建表后动态加进来的"普通列"，等价于 JSON/稀疏 schema
+    doc_hash TEXT, source_path TEXT, doc_type TEXT, chunk_index INT,
+    title TEXT, tags TEXT, page_num INT, summary TEXT, ...
+) WITH (metric = 'cosine');
 ```
 
-知识点chroma是无模式“schema-less”
+INSERT
 
+```sql
+upsert(ids, embeddings, metadatas, documents) ≈
+
+INSERT INTO "default" (id, embedding, document, doc_type, source_path, tags, ...)
+VALUES (?, ?, ?, ...)
+ON CONFLICT (id) DO UPDATE SET ...;   -- 幂等，同 ID 覆盖
 ```
-关系库（比如 image_index） —— 先声明，后插入：
-   
-CREATE TABLE image_index (               -- schema 在这里
-    image_id TEXT PRIMARY KEY,
-    file_path TEXT NOT NULL,
-    page_num INTEGER
-);
-INSERT INTO image_index (image_id, file_path, page_num) VALUES (...);  -- 必须对得上
 
-Chroma —— 没有任何声明语句，upsert() 的四个参数就是全部"字段"：
+SELECT
 
-collection.upsert(
-    ids       = ["a1b2c3d4_0000_e5f6g7h8"],   # 主键
-    embeddings= [[0.12, -0.33, ...]],          # 向量
-    metadatas = [{"source_path": "x.pdf", "chunk_index": 0, "text": "..."}],  # 任意键值
-    documents = ["正文内容..."],                # 文本
-)
+```sql
+SELECT id, document, metadatas,            -- include=["documents","metadatas"]
+       embedding <=> :q AS distance        -- 返回 distances
+FROM "default"
+WHERE collection = ? AND source_path = ?   -- where=where_clause
+ORDER BY embedding <=> :q
+LIMIT 10;                                  -- n_results
 ```
+
+
+

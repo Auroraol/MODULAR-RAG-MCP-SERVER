@@ -1,5 +1,7 @@
 第 4 步：在线查询链路 —— src/core/query_engine/
 
+  完整链路文档见同目录 README.md（入口、六步流程、降级矩阵、配置、Trace）。
+
   从 hybrid_search.py:203 的 search() 入口往下读，它按 6 个步骤走：
 
   步骤1 处理查询      → query_processor.py     （关键词提取 + 同义词 + 过滤器解析）
@@ -15,3 +17,6 @@
   RRF 一定要看懂，代码就 fusion.py 里十几行：
 
   score = Σ 1 / (k + rank)    # k 默认 60
+
+  检索之前的编排层看 planner/README.md —— 意图识别 / 路由 / 查询改写，
+  决定"要不要检索、用哪条查询检索"，产出 QueryPlan 再交给上面的链路。

@@ -1,4 +1,4 @@
-"""基于向量 Embedding 的语义检索 Dense Retriever。
+"""基于向量 Embedding 的语义检索 Dense Retriever 稠密检索。
 
 本模块实现 DenseRetriever 组件，通过将查询向量化并从 Vector Store 中
 检索相似的 Chunk 来执行语义检索。它构成混合检索引擎中的稠密检索路径。

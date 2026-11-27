@@ -62,6 +62,10 @@ retrieval:
   sparse_top_k: 20
   fusion_top_k: 10
   rrf_k: 60  # RRF 常数
+  enable_dense: true         # 关闭则会跳过向量检索
+  enable_sparse: true        # 关闭则会跳过 BM25 检索
+  parallel_retrieval: true   # 双路并行；false 时串行执行
+  metadata_filter_post: true # 融合后按 metadata 过滤
 
 # =============================================================================
 # Rerank 配置

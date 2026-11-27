@@ -1,4 +1,4 @@
-"""使用 BM25 的关键词检索 Sparse Retriever。
+"""使用 BM25 的关键词检索 Sparse Retriever 稠密检索。
 
 本模块实现 SparseRetriever 组件，使用 BM25 倒排索引执行基于关键词的检索。
 它构成混合检索引擎中的稀疏检索路径，与 DenseRetriever 的语义检索互相补充。

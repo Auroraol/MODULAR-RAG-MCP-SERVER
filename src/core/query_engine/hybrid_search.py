@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from src.core.types import ProcessedQuery, RetrievalResult
 
+# if TYPE_CHECKING: 是只给类型检查器看的导入块——运行时永远不执行
 if TYPE_CHECKING:
     from src.core.query_engine.retriever.dense_retriever import DenseRetriever
     from src.core.query_engine.fusion import RRFFusion
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 def _snapshot_results(
-    results: Optional[List[RetrievalResult]],
+        results: Optional[List[RetrievalResult]],
 ) -> List[Dict[str, Any]]:
     """为 Trace 存储创建检索结果的可序列化快照。
 
@@ -137,13 +138,13 @@ class HybridSearch:
     """
 
     def __init__(
-        self,
-        settings: Optional[Settings] = None,
-        query_processor: Optional[QueryProcessor] = None,
-        dense_retriever: Optional[DenseRetriever] = None,
-        sparse_retriever: Optional[SparseRetriever] = None,
-        fusion: Optional[RRFFusion] = None,
-        config: Optional[HybridSearchConfig] = None,
+            self,
+            settings: Optional[Settings] = None,
+            query_processor: Optional[QueryProcessor] = None,
+            dense_retriever: Optional[DenseRetriever] = None,
+            sparse_retriever: Optional[SparseRetriever] = None,
+            fusion: Optional[RRFFusion] = None,
+            config: Optional[HybridSearchConfig] = None,
     ) -> None:
         """使用各组件初始化 HybridSearch。
 
@@ -185,28 +186,28 @@ class HybridSearch:
         """
         if settings is None:
             return HybridSearchConfig()
-        
+
         retrieval_config = getattr(settings, 'retrieval', None)
         if retrieval_config is None:
             return HybridSearchConfig()
-        
+
         return HybridSearchConfig(
             dense_top_k=getattr(retrieval_config, 'dense_top_k', 20),
             sparse_top_k=getattr(retrieval_config, 'sparse_top_k', 20),
             fusion_top_k=getattr(retrieval_config, 'fusion_top_k', 10),
-            enable_dense=True,
-            enable_sparse=True,
-            parallel_retrieval=True,
-            metadata_filter_post=True,
+            enable_dense=getattr(retrieval_config, 'enable_dense', True),
+            enable_sparse=getattr(retrieval_config, 'enable_sparse', True),
+            parallel_retrieval=getattr(retrieval_config, 'parallel_retrieval', True),
+            metadata_filter_post=getattr(retrieval_config, 'metadata_filter_post', True),
         )
-    
+
     def search(
-        self,
-        query: str,
-        top_k: Optional[int] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        trace: Optional[Any] = None,
-        return_details: bool = False,
+            self,
+            query: str,
+            top_k: Optional[int] = None,
+            filters: Optional[Dict[str, Any]] = None,
+            trace: Optional[Any] = None,
+            return_details: bool = False,
     ) -> List[RetrievalResult] | HybridSearchResult:
         """执行结合稠密检索与稀疏检索的混合检索。
 
@@ -240,6 +241,7 @@ class HybridSearch:
 
         # 步骤 1：处理查询
         _t0 = time.monotonic()
+        # 检索侧的确定性预处理, 去空白 → 解析 collection:xxx → 分词 → 去停用词/去重/截断
         processed_query = self._process_query(query)
         _elapsed = (time.monotonic() - _t0) * 1000.0
         if trace is not None:
@@ -249,6 +251,7 @@ class HybridSearch:
                 "keywords": processed_query.keywords,
             }, elapsed_ms=_elapsed)
 
+        # 合并过滤条件
         # 将显式过滤条件与查询提取的过滤条件合并
         merged_filters = self._merge_filters(processed_query.filters, filters)
 
@@ -297,7 +300,7 @@ class HybridSearch:
         final_results = fused_results[:effective_top_k]
 
         logger.debug(f"HybridSearch: returning {len(final_results)} results")
-        
+
         if return_details:
             return HybridSearchResult(
                 results=final_results,
@@ -308,9 +311,9 @@ class HybridSearch:
                 used_fallback=used_fallback,
                 processed_query=processed_query,
             )
-        
+
         return final_results
-    
+
     def _process_query(self, query: str) -> ProcessedQuery:
         """使用 QueryProcessor 处理原始查询。
 
@@ -329,13 +332,13 @@ class HybridSearch:
                 keywords=keywords,
                 filters={},
             )
-        
+
         return self.query_processor.process(query)
-    
+
     def _merge_filters(
-        self,
-        query_filters: Dict[str, Any],
-        explicit_filters: Optional[Dict[str, Any]],
+            self,
+            query_filters: Dict[str, Any],
+            explicit_filters: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
         """将查询提取的过滤条件与显式过滤条件合并。
 
@@ -352,12 +355,12 @@ class HybridSearch:
         if explicit_filters:
             merged.update(explicit_filters)
         return merged
-    
+
     def _run_retrievals(
-        self,
-        processed_query: ProcessedQuery,
-        filters: Optional[Dict[str, Any]],
-        trace: Optional[Any],
+            self,
+            processed_query: ProcessedQuery,
+            filters: Optional[Dict[str, Any]],
+            trace: Optional[Any],
     ) -> Tuple[
         Optional[List[RetrievalResult]],
         Optional[List[RetrievalResult]],
@@ -383,13 +386,13 @@ class HybridSearch:
 
         # 确定要执行哪些检索
         run_dense = (
-            self.config.enable_dense
-            and self.dense_retriever is not None
+                self.config.enable_dense
+                and self.dense_retriever is not None
         )
         run_sparse = (
-            self.config.enable_sparse
-            and self.sparse_retriever is not None
-            and processed_query.keywords  # 稀疏检索需要关键词
+                self.config.enable_sparse
+                and self.sparse_retriever is not None
+                and processed_query.keywords  # 稀疏检索需要关键词
         )
 
         if not run_dense and not run_sparse:
@@ -417,12 +420,12 @@ class HybridSearch:
                 )
 
         return dense_results, sparse_results, dense_error, sparse_error
-    
+
     def _run_parallel_retrievals(
-        self,
-        processed_query: ProcessedQuery,
-        filters: Optional[Dict[str, Any]],
-        trace: Optional[Any],
+            self,
+            processed_query: ProcessedQuery,
+            filters: Optional[Dict[str, Any]],
+            trace: Optional[Any],
     ) -> Tuple[
         Optional[List[RetrievalResult]],
         Optional[List[RetrievalResult]],
@@ -484,10 +487,10 @@ class HybridSearch:
         return dense_results, sparse_results, dense_error, sparse_error
 
     def _run_dense_retrieval(
-        self,
-        query: str,
-        filters: Optional[Dict[str, Any]],
-        trace: Optional[Any],
+            self,
+            query: str,
+            filters: Optional[Dict[str, Any]],
+            trace: Optional[Any],
     ) -> Tuple[Optional[List[RetrievalResult]], Optional[str]]:
         """带错误处理地执行稠密检索。
 
@@ -501,7 +504,7 @@ class HybridSearch:
         """
         if self.dense_retriever is None:
             return None, "Dense retriever not configured"
-        
+
         try:
             _t0 = time.monotonic()
             results = self.dense_retriever.retrieve(
@@ -530,12 +533,12 @@ class HybridSearch:
                     "result_count": 0,
                 })
             return None, error_msg
-    
+
     def _run_sparse_retrieval(
-        self,
-        keywords: List[str],
-        filters: Optional[Dict[str, Any]],
-        trace: Optional[Any],
+            self,
+            keywords: List[str],
+            filters: Optional[Dict[str, Any]],
+            trace: Optional[Any],
     ) -> Tuple[Optional[List[RetrievalResult]], Optional[str]]:
         """带错误处理地执行稀疏检索。
 
@@ -556,7 +559,7 @@ class HybridSearch:
         try:
             # 若存在则从过滤条件中提取 collection
             collection = filters.get('collection') if filters else None
-            
+
             _t0 = time.monotonic()
             results = self.sparse_retriever.retrieve(
                 keywords=keywords,
@@ -578,13 +581,13 @@ class HybridSearch:
             error_msg = f"Sparse retrieval error: {e}"
             logger.error(error_msg)
             return None, error_msg
-    
+
     def _fuse_results(
-        self,
-        dense_results: List[RetrievalResult],
-        sparse_results: List[RetrievalResult],
-        top_k: int,
-        trace: Optional[Any],
+            self,
+            dense_results: List[RetrievalResult],
+            sparse_results: List[RetrievalResult],
+            top_k: int,
+            trace: Optional[Any],
     ) -> List[RetrievalResult]:
         """使用 RRF 融合稠密检索与稀疏检索的结果。
 
@@ -615,7 +618,7 @@ class HybridSearch:
         if len(ranking_lists) == 1:
             # 仅有一个来源，无需融合
             return ranking_lists[0][:top_k]
-        
+
         _t0 = time.monotonic()
         fused = self.fusion.fuse(
             ranking_lists=ranking_lists,
@@ -632,12 +635,12 @@ class HybridSearch:
                 "chunks": _snapshot_results(fused),
             }, elapsed_ms=_elapsed)
         return fused
-    
+
     def _interleave_results(
-        self,
-        dense_results: List[RetrievalResult],
-        sparse_results: List[RetrievalResult],
-        top_k: int,
+            self,
+            dense_results: List[RetrievalResult],
+            sparse_results: List[RetrievalResult],
+            top_k: int,
     ) -> List[RetrievalResult]:
         """未配置融合时的简单交错回退方案。
 
@@ -661,23 +664,23 @@ class HybridSearch:
                 if r.chunk_id not in seen_ids:
                     seen_ids.add(r.chunk_id)
                     interleaved.append(r)
-            
+
             if len(interleaved) >= top_k:
                 break
-            
+
             if s_idx < len(sparse_results):
                 r = sparse_results[s_idx]
                 s_idx += 1
                 if r.chunk_id not in seen_ids:
                     seen_ids.add(r.chunk_id)
                     interleaved.append(r)
-        
+
         return interleaved
-    
+
     def _apply_metadata_filters(
-        self,
-        results: List[RetrievalResult],
-        filters: Dict[str, Any],
+            self,
+            results: List[RetrievalResult],
+            filters: Dict[str, Any],
     ) -> List[RetrievalResult]:
         """对结果应用元数据过滤（融合后的回退方案）。
 
@@ -702,9 +705,9 @@ class HybridSearch:
         return filtered
 
     def _matches_filters(
-        self,
-        metadata: Dict[str, Any],
-        filters: Dict[str, Any],
+            self,
+            metadata: Dict[str, Any],
+            filters: Dict[str, Any],
     ) -> bool:
         """检查元数据是否满足所有过滤条件。
 
@@ -719,8 +722,8 @@ class HybridSearch:
             if key == "collection":
                 # collection 可能存在于不同的元数据键中
                 meta_collection = (
-                    metadata.get("collection")
-                    or metadata.get("source_collection")
+                        metadata.get("collection")
+                        or metadata.get("source_collection")
                 )
                 if meta_collection != value:
                     return False
@@ -748,11 +751,11 @@ class HybridSearch:
 
 
 def create_hybrid_search(
-    settings: Optional[Settings] = None,
-    query_processor: Optional[QueryProcessor] = None,
-    dense_retriever: Optional[DenseRetriever] = None,
-    sparse_retriever: Optional[SparseRetriever] = None,
-    fusion: Optional[RRFFusion] = None,
+        settings: Optional[Settings] = None,
+        query_processor: Optional[QueryProcessor] = None,  # 检索侧的确定性预处理
+        dense_retriever: Optional[DenseRetriever] = None,  # 密集检索器
+        sparse_retriever: Optional[SparseRetriever] = None,  # 稀疏检索器
+        fusion: Optional[RRFFusion] = None,  # 融合器
 ) -> HybridSearch:
     """使用默认组件创建 HybridSearch 的工厂函数。
 
@@ -786,7 +789,7 @@ def create_hybrid_search(
             if retrieval_config is not None:
                 rrf_k = getattr(retrieval_config, 'rrf_k', 60)
         fusion = RRFFusion(k=rrf_k)
-    
+
     return HybridSearch(
         settings=settings,
         query_processor=query_processor,

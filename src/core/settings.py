@@ -81,6 +81,15 @@ def _require_bool(data: Dict[str, Any], key: str, path: str) -> bool:
     return value
 
 
+def _optional_bool(
+    data: Dict[str, Any], key: str, path: str, default: bool
+) -> bool:
+    """可选布尔字段：缺失时使用默认值，存在时仍做严格类型校验。"""
+    if data.get(key) is None:
+        return default
+    return _require_bool(data, key, path)
+
+
 def _require_list(data: Dict[str, Any], key: str, path: str) -> List[Any]:
     value = _require_value(data, key, path)
     if not isinstance(value, list):
@@ -130,6 +139,11 @@ class RetrievalSettings:
     sparse_top_k: int
     fusion_top_k: int
     rrf_k: int
+    # 可选开关：缺失时默认全开，保持旧配置文件行为不变
+    enable_dense: bool = True
+    enable_sparse: bool = True
+    parallel_retrieval: bool = True
+    metadata_filter_post: bool = True
 
 
 @dataclass(frozen=True)
@@ -262,6 +276,14 @@ class Settings:
                 sparse_top_k=_require_int(retrieval, "sparse_top_k", "retrieval"),
                 fusion_top_k=_require_int(retrieval, "fusion_top_k", "retrieval"),
                 rrf_k=_require_int(retrieval, "rrf_k", "retrieval"),
+                enable_dense=_optional_bool(retrieval, "enable_dense", "retrieval", True),
+                enable_sparse=_optional_bool(retrieval, "enable_sparse", "retrieval", True),
+                parallel_retrieval=_optional_bool(
+                    retrieval, "parallel_retrieval", "retrieval", True
+                ),
+                metadata_filter_post=_optional_bool(
+                    retrieval, "metadata_filter_post", "retrieval", True
+                ),
             ),
             rerank=RerankSettings(
                 enabled=_require_bool(rerank, "enabled", "rerank"),
