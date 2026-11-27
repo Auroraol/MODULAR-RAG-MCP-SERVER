@@ -466,20 +466,21 @@ Chroma  id  ──────────── chunk_id ───────�
 ```json
 位置：data/db/chroma/（chroma.sqlite3 + HNSW 段 *.bin）
 
-{  
-    "chunk_index": 0, "page_num": 1,
-    "source_path": "C:\\Users\\...\\tmpa7am_6px.pdf",
-    "doc_type": "pdf",
-    "doc_hash": "101872d7acb1754c...",
-    "source_ref": "doc_101872d7acb1754c",
-    "title": "Image Placeholder References ...",
-    "summary": "The text chunk consists solely of ...",
-    "tags": "image references,placeholders,...",
-    "images": "{'id': '101872d7_1_1', 'path': ...},{'id': '101872d7_2_1', ...}",
-    "image_refs": "101872d7_1_1,101872d7_2_1",
-    "enriched_by": "llm", "refined_by": "llm",
-    "text": "[IMAGE: 101872d7_1_1]\n\n[IMAGE: 101872d7_2_1]",
-    "chunk_id": "42ee3668_0000_93c6e5d0"
+  {
+      "id": "101872d7_0000_93c6e5d0",
+      "embedding": [0.013, -0.221, ...],        # 1536 维 → HNSW *.bin
+      "document": "...正文...",                  # metadata["text"] 或 id
+      "metadata": {
+          "source_path": "D:\\docs\\报告.pdf",   # Loader 写入
+          "doc_type": "pdf",
+          "chunk_index": 0,
+          "title": "报告标题",
+          "tags": "api,sdk",                     # list → 逗号字符串
+          "images": "{'id': '101872d7_1_1', ...}",  # dict/list → str()
+          "summary": "...",
+          "text": "...正文...",                  # VectorUpserter 补的
+          "chunk_id": "101872d7_0000_93c6e5d0"  # VectorUpserter 补的
+      }
   }
 ```
 
@@ -1891,3 +1892,17 @@ LIMIT 10;                                  -- n_results
 
 
 
+
+
+
+
+```
+CREATE TABLE embeddings (
+    id INTEGER PRIMARY KEY,
+    segment_id TEXT, embedding_id TEXT, seq_id BLOB, created_at TIMESTAMP
+);
+CREATE TABLE embedding_metadata (
+    id INTEGER, key TEXT, string_value TEXT,
+    int_value INTEGER, float_value REAL, bool_value INTEGER
+);
+```

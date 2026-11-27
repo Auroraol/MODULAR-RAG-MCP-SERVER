@@ -167,6 +167,7 @@ class ChromaStore(BaseVectorStore):
         metadatas = []
         documents = []  # ChromaDB 要求 documents 字段
 
+        # 循环里组装四个数组
         for record in records:
             ids.append(str(record['id']))
             embeddings.append(record['vector'])
@@ -238,10 +239,10 @@ class ChromaStore(BaseVectorStore):
         # 执行查询
         try:
             results = self.collection.query(
-                query_embeddings=[vector],
-                n_results=top_k,
-                where=where_clause,
-                include=["metadatas", "distances", "documents"]
+                query_embeddings=[vector], # 查询向量
+                n_results=top_k, # 返回结果数量
+                where=where_clause,  # 过滤条件
+                include=["metadatas", "distances", "documents"],  # ChromaDB 要求包含的字段
             )
         except Exception as e:
             raise RuntimeError(
